@@ -1,0 +1,26 @@
+{
+  "messy": {
+    "alt": "A pale desk scattered with loose paper sheets, a pencil and a closed silver laptop. Headline: Send us the messy version.",
+    "caption": "Most software starts as a workaround. A spreadsheet only one person understands. A register on the shop floor. A group chat that tracks orders.\n\nYou don't need a spec to talk to us. Tell us how it works today and what has to work at the end, and we'll scope the version that settles it.\n\nStart a brief at awsavya.in (link in bio).\n\n#customsoftware #smallbusiness #businessautomation #appdevelopment #madeinindia"
+  },
+  "people": {
+    "alt": "Two open laptops side by side on a dark desk with two empty chairs. Headline: Talk to the people who write the code.",
+    "caption": "AWSAVYA is two people: Vivek and Yash. The V and the Y in the name.\n\nWhen you send a brief, you talk to the two of us. We scope it, design it and build it, with no handoffs and no account managers relaying messages.\n\nApps, websites, custom software, applied AI. Start a brief at awsavya.in.\n\n#softwarestudio #startupindia #founders #webdevelopment #appdevelopment"
+  },
+  "website": {
+    "alt": "A silver laptop with a blank screen on a white marble desk beside a small succulent. Headline: Your website has one job.",
+    "caption": "A visitor decides in seconds whether you're what they're looking for. Your website has to tell them plainly what you do, and make getting in touch the obvious next step.\n\nThat's the job. We design and build websites around it, fast and accessible.\n\nStart a brief at awsavya.in.\n\n#webdesign #websitedesign #smallbusinessindia #webdevelopment #branding"
+  },
+  "offline": {
+    "alt": "A smartphone resting on a rock beside a misty mountain road at dusk. Headline: Built for where the signal drops.",
+    "caption": "Plenty of work happens away from good Wi-Fi: on a trip, at a site, on a shop floor.\n\nWe build Android apps that save everything on the phone first and sync when the connection comes back. Two of our own builds work this way: TripSplit, for group expenses on the road, and Har Apparels, for tracking batches on a denim shop floor.\n\nNeed an app that can't afford to stop? Start a brief at awsavya.in.\n\n#androiddev #mobileapp #offlinefirst #appdevelopment #kotlin"
+  },
+  "milestones": {
+    "alt": "A smartphone, a tablet and a laptop standing on white stone blocks like steps. Headline: Working software. Every milestone.",
+    "caption": "You shouldn't have to wait months to see what you're paying for.\n\nWe scope projects in milestones, and each one ends with working software you can open and try. When the project ends, you get the code and the documentation to run it, under the terms of the project agreement.\n\nStart a brief at awsavya.in.\n\n#softwaredevelopment #mvp #startupindia #productdevelopment #agile"
+  },
+  "ai": {
+    "alt": "A chrome sphere on a black mirror surface linked by beams of light to small glowing cubes. Headline: AI that shows its sources.",
+    "caption": "AI is useful when you can check it.\n\nWe build assistants that answer from your own documents, and automations that take repeat work off your team. Every answer can point to where it came from. Our own build, Build2Buzz, drafts posts only from facts it can cite, and a person reviews each draft before it goes anywhere.\n\nWhich repeat task eats the most hours in your week? Start a brief at awsavya.in.\n\n#artificialintelligence #aiautomation #businessautomation #genai #workflowautomation"
+  }
+}
