@@ -152,14 +152,15 @@ class Instagram:
 
 # ---------- checks ----------
 
-def check_caption(caption: str) -> list[str]:
+def check_caption(caption: str, max_hashtags: int = MAX_HASHTAGS) -> list[str]:
     problems = []
     if not caption.strip():
         problems.append("caption is empty")
     if len(caption) > MAX_CAPTION:
         problems.append(f"caption is {len(caption)} characters (max {MAX_CAPTION})")
-    if len(re.findall(r"(?<!\w)#\w+", caption)) > MAX_HASHTAGS:
-        problems.append(f"more than {MAX_HASHTAGS} hashtags")
+    hashtags = len(re.findall(r"(?<!\w)#\w+", caption))
+    if hashtags > max_hashtags:
+        problems.append(f"{hashtags} hashtags (max {max_hashtags})")
     if len(re.findall(r"(?<!\w)@\w+", caption)) > MAX_MENTIONS:
         problems.append(f"more than {MAX_MENTIONS} @mentions")
     return problems
