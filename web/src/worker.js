@@ -254,12 +254,16 @@ const IDEA_PROMPT = `You suggest Instagram ad ideas for AWSAVYA, a two-person so
 They build: Android apps that work offline, websites and web platforms, custom software shaped around how a business runs,
 and applied AI and automation whose output can be checked. Clients talk directly to the two founders; work comes in
 milestones with working software each time, and ends with a documented handover.
-You'll be given three business types, a service and an ad style. Write one idea for each business type.
-Each idea is one plain sentence under 150 characters that names a concrete, everyday pain that owner really has
-(something they'd complain about) and what changes with the software. Start with the pain or the change, never with
-"A", "An" or the business name, and never use the words boutique, seamless, streamline or revolutionise.
+You'll get three numbered pairs of a business type and a thing AWSAVYA could build for it. Write one ad idea per pair.
+Each idea is ONE short sentence, at most 22 words, in plain everyday English, the way you'd explain it to the owner
+over chai: what the thing does in their day, and what they get from it. A shop owner must understand it on first read.
+No jargon or buzzwords (no "real time", "sync", "seamless", "streamline", "leverage", "digital transformation", "boutique").
 Never invent clients, numbers, prices or results.
-Return only JSON: {"ideas": ["...", "...", "..."]}`;
+Good examples (different businesses, different things):
+- "A booking page where salon customers pick their own slot, so the phone stops ringing all day."
+- "Fee reminders go out to parents by themselves, so nobody at the coaching centre has to chase payments."
+- "Every morning a new Instagram post about today's bakes goes up on its own, while you're busy baking."
+Return only JSON: {"ideas": ["idea for pair 1", "idea for pair 2", "idea for pair 3"]}`;
 
 // Picked in code so every request explores different ground instead of the model's favourite ("a boutique café").
 const IDEA_BUSINESSES = [
@@ -269,26 +273,43 @@ const IDEA_BUSINESSES = [
   "dairy supplier", "mobile repair shop", "architect's office", "packers and movers", "tuition teacher", "florist",
   "electrical contractor", "organic farm", "jewellery shop", "physiotherapy clinic", "courier franchise",
 ];
-const IDEA_SERVICES = ["an Android app that works offline", "a website", "a web platform for several kinds of user",
-  "custom software for daily operations", "an AI assistant that answers from the business's own documents",
-  "an automation that removes a repeat task"];
-const IDEA_STYLES = ["a before-and-after", "a question the owner asks every day", "a small daily moment that goes wrong",
-  "the end of a messy workaround (paper, spreadsheet or group chat)", "what the owner gets back (time, calm, control)"];
+// Concrete things AWSAVYA builds (all within its four services). Each idea gets a different one.
+// `label` is shown on the idea button; `brief` is what the AI is told.
+const IDEA_SERVICES = [
+  { label: "Instagram auto-posting", brief: "an automation that makes and posts an Instagram ad every day by itself (like the one AWSAVYA built for itself)" },
+  { label: "Auto reminders", brief: "automatic payment or appointment reminders sent to customers without anyone typing them" },
+  { label: "Auto invoices", brief: "invoices and receipts that are made and sent automatically after each sale or job" },
+  { label: "Booking website", brief: "a website where customers book a slot or appointment themselves" },
+  { label: "Business website", brief: "a simple website that says plainly what the business does and brings in enquiries" },
+  { label: "Online catalogue", brief: "a website catalogue where customers browse products and place orders" },
+  { label: "Order system", brief: "custom software where every order is recorded in one place and moves step by step until delivered" },
+  { label: "Stock & billing", brief: "custom software for stock and billing that replaces the register or spreadsheet" },
+  { label: "Staff app", brief: "an Android app for staff on the move or on the floor that keeps working without internet" },
+  { label: "Customer portal", brief: "a login page where customers check their order, report or status themselves" },
+  { label: "AI assistant", brief: "an AI assistant that answers customers' common questions using the business's own information, checked by a person" },
+  { label: "Daily summary", brief: "an automatic summary of the day's sales, orders or bookings sent to the owner every evening" },
+];
 const pick = (list, n) => [...list].sort(() => Math.random() - 0.5).slice(0, n);
 
 async function suggestIdea(env) {
   const list = await env.STORE.list({ prefix: "post:", limit: 10 });
   const recent = (await Promise.all(list.keys.map((k) => env.STORE.get(k.name, "json"))))
     .filter(Boolean).map((r) => r.headline).filter(Boolean);
-  const input = `Business types: ${pick(IDEA_BUSINESSES, 3).join("; ")}.\nService: ${pick(IDEA_SERVICES, 1)[0]}.\n` +
-    `Ad style: ${pick(IDEA_STYLES, 1)[0]}.` + (recent.length ? `\nAvoid repeating these recent posts: ${recent.join(" | ")}` : "");
-  const { text, provider } = await completeText(env, IDEA_PROMPT, input, { maxTokens: 1200, temperature: 1 });
+  const businesses = pick(IDEA_BUSINESSES, 3);
+  const services = pick(IDEA_SERVICES, 3);
+  const pairs = businesses.map((b, i) => ({ business: b, service: services[i] }));
+  const input = pairs.map((p, i) => `${i + 1}. Business: ${p.business}. Build: ${p.service.brief}.`).join("\n") +
+    (recent.length ? `\nAvoid repeating these recent posts: ${recent.join(" | ")}` : "");
+  const { text, provider } = await completeText(env, IDEA_PROMPT, input, { maxTokens: 1200, temperature: 0.9 });
   let ideas = [];
   try { ideas = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}").ideas || []; } catch { /* fall back below */ }
   if (!ideas.length) ideas = text.split("\n").map((l) => l.replace(/^[\s\-\d.)"“]+|["”]$/g, "").trim()).filter((l) => l.length > 20);
-  ideas = ideas.map((i) => String(i).trim()).filter(Boolean).slice(0, 3);
-  if (!ideas.length) return fail("The AI didn't come up with ideas. Try again.", 502);
-  return json({ ideas, idea: ideas[0], provider });
+  const options = ideas.slice(0, 3).map((idea, i) => ({
+    idea: String(idea).trim(),
+    label: pairs[i] ? `${pairs[i].business.replace(/^\w/, (c) => c.toUpperCase())} · ${pairs[i].service.label}` : "",
+  })).filter((o) => o.idea);
+  if (!options.length) return fail("The AI didn't come up with ideas. Try again.", 502);
+  return json({ options, ideas: options.map((o) => o.idea), provider });
 }
 
 async function makeImage(request, env) {

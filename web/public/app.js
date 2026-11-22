@@ -214,16 +214,19 @@ $("write-copy").addEventListener("click", () =>
 $("suggest-idea").addEventListener("click", () =>
   busy($("suggest-idea"), $("copy-status"), "Thinking…", async () => {
     setStatus($("copy-status"), "");
-    const { ideas = [] } = await apiJson("/api/idea", { method: "POST", body: {} });
-    $("idea-options").innerHTML = ideas
-      .map((idea) => `<button type="button" class="idea-chip">${idea.replace(/</g, "&lt;")}</button>`).join("");
+    const { options = [] } = await apiJson("/api/idea", { method: "POST", body: {} });
+    const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    $("idea-options").innerHTML = options.map((o) =>
+      `<button type="button" class="idea-chip" data-idea="${esc(o.idea)}">` +
+      (o.label ? `<span class="idea-label mono">${esc(o.label)}</span>` : "") +
+      `<span>${esc(o.idea)}</span></button>`).join("");
     setStatus($("copy-status"), "Pick one (it goes into the box), edit it if you like, then click Write it with AI.", "ok");
   }));
 
 $("idea-options").addEventListener("click", (e) => {
   const chip = e.target.closest(".idea-chip");
   if (!chip) return;
-  $("idea").value = chip.textContent;
+  $("idea").value = chip.dataset.idea;
   document.querySelectorAll(".idea-chip").forEach((c) => c.classList.toggle("picked", c === chip));
 });
 

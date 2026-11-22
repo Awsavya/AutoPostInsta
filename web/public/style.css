@@ -48,6 +48,7 @@ input:focus-visible, textarea:focus-visible, button:focus-visible, .file-btn:foc
 .idea-chip { text-align: left; font: 400 14px/1.4 "Archivo", sans-serif; color: var(--ink); background: #fff; border: 1px solid var(--rule);
   border-radius: 10px; padding: 10px 12px; cursor: pointer; text-wrap: pretty; transition-property: border-color, background-color; transition-duration: 150ms; }
 .idea-chip:hover { border-color: var(--ink); }
+.idea-label { display: block; font-size: 11px; color: var(--graphite); margin-bottom: 4px; text-transform: uppercase; }
 .idea-chip.picked { border-color: var(--ink); background: var(--silver); }
 .status { min-height: 1.5em; margin: 10px 0 0; font-size: 14px; color: var(--graphite); }
 .status.ok { color: var(--ok); } .status.bad { color: var(--bad); }
