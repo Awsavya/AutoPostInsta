@@ -1,0 +1,25 @@
+{
+  // AutoPostInsta: private web app for making AWSAVYA Instagram ads and posting them through Buffer.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "autopostinsta",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    // Stores the finished ad images (served publicly at /img/<id>.jpg so Buffer can fetch them)
+    // and a short post history. Replace the id after `wrangler kv namespace create STORE`.
+    { "binding": "STORE", "id": "4c8fed7ab37d4230b3c389616a633b18" }
+  ],
+  "vars": {
+    "IMAGE_MODEL": "@cf/black-forest-labs/flux-2-dev",
+    // gpt-oss-120b followed the copy brief well (visual metaphors, copy-line length, hooks) in 6–7 s.
+    // Gemma 4 wrote slightly better lines but took 50–90 s and sometimes returned nothing.
+    "TEXT_MODEL": "@cf/openai/gpt-oss-120b"
+  }
+  // Secrets (set with `wrangler secret put NAME`, never committed):
+  //   APP_PASSWORD, SESSION_SECRET, BUFFER_API_KEY, BUFFER_CHANNEL_ID,
+  //   CF_ACCOUNT_ID, CF_API_TOKEN, and optional backup CF_ACCOUNT_ID_2, CF_API_TOKEN_2
+}

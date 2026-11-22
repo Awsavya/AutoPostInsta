@@ -8,6 +8,7 @@ The goal is to have AI make an AWSAVYA advertising image and caption every day a
 | `awsavya_ads.py` | Makes the ads. Cloudflare Flux 2 Dev draws the scene and headline. Code then adds the copy line, the real AWSAVYA logo and the call to action "START A BRIEF · AWSAVYA.IN" in the site's fonts. |
 | `brand/` | Logos (`awsavya-logo.png` for light ads, `awsavya-logo-light.png` for dark ads) and fonts (Archivo, Martian Mono; both OFL) copied from the awsavya.in site. |
 | `ads/` | The first six finished ads (`ad-*.jpg`, 1080×1350), their raw AI scenes (`*-scene.jpg`), `captions.json` (caption and alt text per ad) and `AWSAVYA-ad-copy.md` (the same copy, for reading). Served publicly at `https://awsavya.github.io/AutoPostInsta/ads/` through GitHub Pages. |
+| `web/` | **The private web app** (live on Cloudflare Workers): idea → AI copy → AI image or your own photo → poster preview with checks → post now, schedule, queue or Buffer draft, plus recent posts with Delete. Setup and deploy: [web/README.md](web/README.md). |
 | `post_buffer.py` | **The posting route in use.** Sends an ad to Buffer, which publishes it to Instagram. No Facebook needed. Setup: [SETUP-BUFFER.md](SETUP-BUFFER.md). |
 | `post_instagram.py` | Alternative route straight through Meta's Instagram API. Needs a Facebook login to register as a Meta developer. Setup: [SETUP-INSTAGRAM.md](SETUP-INSTAGRAM.md). |
 

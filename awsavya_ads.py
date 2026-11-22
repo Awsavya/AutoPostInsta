@@ -148,7 +148,10 @@ def generate(accounts, prompt, retries=2):
                     print(f"  {acc['label']}: server error {err.code}, retrying")
                     continue
                 raise RuntimeError(f"{acc['label']}: HTTP {err.code} {detail[:200]}") from None
-    raise AllAccountsUsedUp("Every account has used its daily free allowance. It resets at 00:00 UTC (5:30 AM IST).")
+    raise AllAccountsUsedUp(
+        "Every account has used its daily free allowance. Cloudflare says it resets daily, but in practice "
+        "it can stay used up for up to 24 hours after the last heavy use, so try again later."
+    )
 
 
 def font(name, size, weight=None):

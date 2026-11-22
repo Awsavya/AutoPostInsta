@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>AutoPostInsta</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <!-- Login -->
+  <main id="login-view" class="login" hidden>
+    <form id="login-form" class="card login-card">
+      <img src="/brand/awsavya-logo.png" alt="AWSAVYA" class="login-logo" width="200" height="34">
+      <h1>AutoPostInsta</h1>
+      <p class="muted">Private. Enter the password to continue.</p>
+      <label for="password" class="label">Password</label>
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn btn-primary">Log in</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </main>
+
+  <!-- App -->
+  <div id="app-view" hidden>
+    <header class="topbar">
+      <div class="brand">
+        <img src="/brand/awsavya-logo.png" alt="AWSAVYA" width="150" height="26">
+        <span class="mono">AutoPostInsta</span>
+      </div>
+      <div class="topbar-right">
+        <span id="queue-pill" class="pill mono" title="Posts waiting in Buffer (free plan holds 10)">Queue –/10</span>
+        <button id="logout" class="btn btn-ghost">Log out</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="column">
+        <!-- 1. Idea -->
+        <div class="card">
+          <h2><span class="step mono">01</span> Idea</h2>
+          <label for="idea" class="label">What should this post be about?</label>
+          <textarea id="idea" rows="3" placeholder="e.g. Ad about offline apps for factory floors"></textarea>
+          <div class="row">
+            <button id="suggest-idea" class="btn btn-ghost">Give me an idea</button>
+            <button id="write-copy" class="btn btn-primary">Write it with AI</button>
+          </div>
+          <p class="muted small">Stuck? "Give me an idea" fills the box. Or skip the AI and fill in the fields below yourself.</p>
+          <p id="copy-status" class="status" role="status"></p>
+        </div>
+
+        <!-- 2. Words -->
+        <div class="card">
+          <h2><span class="step mono">02</span> Words</h2>
+          <label for="headline" class="label">Headline <span class="muted">(drawn inside the image)</span></label>
+          <input id="headline" maxlength="60" placeholder="Send us the messy version.">
+          <label for="sub" class="label">Copy line <span class="muted">(under the image, max 2 lines)</span></label>
+          <input id="sub" maxlength="140">
+          <label for="caption" class="label">Caption <span id="caption-count" class="muted mono small"></span></label>
+          <textarea id="caption" rows="8"></textarea>
+          <label for="alt" class="label">Alt text <span class="muted">(for screen readers)</span></label>
+          <input id="alt" maxlength="300">
+        </div>
+
+        <!-- 3. Image -->
+        <div class="card">
+          <h2><span class="step mono">03</span> Image</h2>
+          <fieldset class="segmented" aria-label="Background">
+            <label><input type="radio" name="ground" value="paper" checked> Light</label>
+            <label><input type="radio" name="ground" value="ink"> Dark</label>
+          </fieldset>
+          <p id="grid-hint" class="muted small"></p>
+          <label for="scene" class="label">Scene <span class="muted">(what the AI should picture)</span></label>
+          <textarea id="scene" rows="2" placeholder="A tall stack of paper files pushed to one side of a desk, and a single tablet on the clean side."></textarea>
+          <p id="scene-why" class="muted small"></p>
+          <div class="row">
+            <button id="make-image" class="btn btn-primary">Make image with AI</button>
+            <label class="btn btn-ghost file-btn">Use my own photo<input id="own-photo" type="file" accept="image/*" hidden></label>
+          </div>
+          <p id="image-status" class="status" role="status"></p>
+        </div>
+      </section>
+
+      <section class="column">
+        <!-- Preview -->
+        <div class="card preview-card">
+          <h2><span class="step mono">04</span> Preview</h2>
+          <canvas id="poster" width="1080" height="1350" aria-label="Ad preview"></canvas>
+          <ul id="checks" class="checks" aria-label="Checks"></ul>
+        </div>
+
+        <!-- Publish -->
+        <div class="card">
+          <h2><span class="step mono">05</span> Publish</h2>
+          <fieldset class="publish-modes">
+            <legend class="sr-only">When</legend>
+            <label><input type="radio" name="mode" value="at" checked> Schedule</label>
+            <label><input type="radio" name="mode" value="now"> Post now</label>
+            <label><input type="radio" name="mode" value="queue"> Add to queue</label>
+            <label><input type="radio" name="mode" value="draft"> Buffer draft</label>
+          </fieldset>
+          <div id="schedule-row">
+            <label for="when" class="label">Date and time <span class="muted">(your local time)</span></label>
+            <input id="when" type="datetime-local">
+          </div>
+          <label class="check-label"><input id="ai-label" type="checkbox" checked> Add Instagram's "AI info" label</label>
+          <button id="publish" class="btn btn-primary btn-wide">Publish</button>
+          <p id="publish-status" class="status" role="status"></p>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+          <h2><span class="step mono">06</span> Recent posts</h2>
+          <ul id="history" class="history"><li class="muted small">Nothing yet.</li></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/app.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["wrangler@4.166.0", "dev", "--config", "web/wrangler.jsonc", "--port", "8787", "--local"],
+      "port": 8787
+    }
+  ]
+}
