@@ -43,6 +43,12 @@ input:focus-visible, textarea:focus-visible, button:focus-visible, .file-btn:foc
 .btn-wide { width: 100%; margin-top: 16px; padding: 13px; font-size: 15px; }
 .file-btn { display: inline-block; }
 
+.idea-options { display: grid; gap: 8px; margin-top: 12px; }
+.idea-options:empty { display: none; }
+.idea-chip { text-align: left; font: 400 14px/1.4 "Archivo", sans-serif; color: var(--ink); background: #fff; border: 1px solid var(--rule);
+  border-radius: 10px; padding: 10px 12px; cursor: pointer; text-wrap: pretty; transition-property: border-color, background-color; transition-duration: 150ms; }
+.idea-chip:hover { border-color: var(--ink); }
+.idea-chip.picked { border-color: var(--ink); background: var(--silver); }
 .status { min-height: 1.5em; margin: 10px 0 0; font-size: 14px; color: var(--graphite); }
 .status.ok { color: var(--ok); } .status.bad { color: var(--bad); }
 .error { color: var(--bad); min-height: 1.5em; margin: 10px 0 0; }

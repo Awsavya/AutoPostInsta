@@ -214,10 +214,18 @@ $("write-copy").addEventListener("click", () =>
 $("suggest-idea").addEventListener("click", () =>
   busy($("suggest-idea"), $("copy-status"), "Thinking…", async () => {
     setStatus($("copy-status"), "");
-    const { idea } = await apiJson("/api/idea", { method: "POST", body: {} });
-    $("idea").value = idea;
-    setStatus($("copy-status"), "Here's an idea. Edit it if you like, then click Write it with AI.", "ok");
+    const { ideas = [] } = await apiJson("/api/idea", { method: "POST", body: {} });
+    $("idea-options").innerHTML = ideas
+      .map((idea) => `<button type="button" class="idea-chip">${idea.replace(/</g, "&lt;")}</button>`).join("");
+    setStatus($("copy-status"), "Pick one (it goes into the box), edit it if you like, then click Write it with AI.", "ok");
   }));
+
+$("idea-options").addEventListener("click", (e) => {
+  const chip = e.target.closest(".idea-chip");
+  if (!chip) return;
+  $("idea").value = chip.textContent;
+  document.querySelectorAll(".idea-chip").forEach((c) => c.classList.toggle("picked", c === chip));
+});
 
 $("make-image").addEventListener("click", () =>
   busy($("make-image"), $("image-status"), "Making image… (about 20 s)", async () => {

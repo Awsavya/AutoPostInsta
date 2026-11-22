@@ -7,9 +7,10 @@ const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // Instagram's limit
 const BUFFER_API = "https://api.buffer.com";
 
 const IMAGE_STYLE =
-  "Monochrome palette of white, silver and near-black only, premium editorial advertising photography, " +
-  "sharp detail, generous negative space. The headline is the only text in the image: no other words, " +
-  "no logos, no brand marks, no people.";
+  "Black-and-white palette of white, silver, grey and near-black only, premium editorial advertising photography, " +
+  "close-up at eye level, objects large and sharp in the lower two thirds, shallow depth of field. " +
+  "Any phone or tablet screen shows a simple clean app interface of cards, icons and check marks with no readable words. " +
+  "The headline is the only readable text in the image: no other words, no logos, no brand marks, no people, no hands.";
 
 const COPY_SYSTEM_PROMPT = `You write Instagram ads for AWSAVYA, a two-person software studio in India run by Vivek and Yash.
 Facts you may use (nothing else):
@@ -24,14 +25,19 @@ Hard rules:
 - Plain, specific, calm voice. Short sentences. Talk to the reader ("you", "your team").
 Return JSON only with these keys:
 The one-second rule: someone scrolling must understand the ad from the headline and the image alone, in one second, with no decoding. Clear beats clever.
-- "headline": 2 to 6 words, ends with a full stop, drawn inside the image. It states the benefit of the ad idea plainly (for example "Less paperwork. More done.", "One app for the whole shop.", "Your website, working for you."). It must match the image.
+- "headline": 2 to 6 words, ends with a full stop, drawn inside the image. It states the positive outcome for the owner plainly (for example "Orders in. Phone quiet.", "Every fee, tracked.", "Less paperwork. More baking."). It must never read like a rule or refusal aimed at customers ("No phone orders." sounds like the shop refuses orders), and it must match the image.
 - "sub": ONE full sentence of 60 to 110 characters, shown under the image. It adds a concrete benefit the headline doesn't say.
 - "hook": the caption's first line, under 100 characters. A question or a pointed statement about the reader's real problem that makes them stop scrolling. Never start with "Custom software" or the product name.
 - "paragraphs": 2 or 3 short paragraphs (1 to 3 sentences each) that follow the hook: the problem, then how AWSAVYA solves it using only the facts above.
 - "hashtags": exactly 5 hashtags without the # sign, all specific to this post's topic (not generic tech tags that don't fit).
-- "scene": one sentence describing a photograph that SHOWS the ad idea literally, in a real work setting a small business owner recognises: a shop counter, an office or clinic desk, a warehouse shelf, a cafe till, a factory floor. Best is a visible before-and-after or contrast, for example "a tall stack of paper files and sticky notes pushed to one side of a desk, and a single tablet on the clean side", "a thick handwritten order register closed beside a phone on a shop counter", "a phone leaning against a labelled box on a tidy warehouse shelf". No abstract metaphors (no keys, locks, puzzles, mazes, gears, light bulbs, paths). Objects only: no people, faces or hands (the image model draws them badly), no text, no logos; any screens plain and blank. Monochrome materials only (white, silver, chrome, steel, glass, matte black): never copper, gold, brass, wood or coloured objects. Leave calm empty space in the upper third of the frame for the headline.
+- "scene": two or three sentences describing a photograph that tells the ad's story on its own, so someone who can't read the caption still gets 80% of the message. It must include:
+  1. WHERE: two or three props that make the business type obvious at a glance (bakery: trays of croissants, a flour-dusted counter, a bread display; clinic: a stethoscope, an appointment book, a treatment chair; coaching centre: a whiteboard, stacked notebooks; hardware shop: shelves of tools and bolts).
+  2. THE PROBLEM, visible: the messy "before" (a desk phone off its hook, a spike of handwritten order slips, sticky notes everywhere, a thick ledger, a crumpled printout).
+  3. THE FIX, visible: one phone or tablet whose screen shows a simple, clean app layout made of rows of cards, icons and check marks with NO readable words or numbers, clearly organised compared with the mess.
+  Frame it as a close-up at eye level with the objects large, filling the lower two thirds of the frame; keep the upper third calm and uncluttered for the headline.
+  No abstract metaphors (no keys, locks, puzzles, mazes, gears, light bulbs, paths). Objects only: no people, faces or hands (the image model draws them badly), no logos. Monochrome palette only: white, silver, chrome, steel, glass, black and grey, and food or goods rendered in black-and-white tones; never coloured objects.
 - "alt": alt text for the finished image, under 150 characters, describing the scene and quoting the headline.
-- "why": one sentence explaining how the image shows the ad idea to someone who sees it for one second. If you can't explain it simply, change the scene before answering.`;
+- "why": one sentence explaining how the image shows the business, the problem and the fix to someone who sees it for one second. If any of the three is missing, change the scene before answering.`;
 
 const LIGHTING = {
   paper: "Bright, airy, high-key lighting: mostly white and pale silver grey tones",
@@ -248,22 +254,41 @@ const IDEA_PROMPT = `You suggest Instagram ad ideas for AWSAVYA, a two-person so
 They build: Android apps that work offline, websites and web platforms, custom software shaped around how a business runs,
 and applied AI and automation whose output can be checked. Clients talk directly to the two founders; work comes in
 milestones with working software each time, and ends with a documented handover.
-Write ONE ad idea as a single plain sentence (under 140 characters) that names a specific kind of small business
-(e.g. a clinic, a cafe, a garment unit, a coaching centre, a hardware shop, a logistics firm) and the everyday problem
-the software removes. Vary the service and the business type. Never invent clients, numbers, prices or results.
-Return only the sentence, no quotes.`;
+You'll be given three business types, a service and an ad style. Write one idea for each business type.
+Each idea is one plain sentence under 150 characters that names a concrete, everyday pain that owner really has
+(something they'd complain about) and what changes with the software. Start with the pain or the change, never with
+"A", "An" or the business name, and never use the words boutique, seamless, streamline or revolutionise.
+Never invent clients, numbers, prices or results.
+Return only JSON: {"ideas": ["...", "...", "..."]}`;
+
+// Picked in code so every request explores different ground instead of the model's favourite ("a boutique café").
+const IDEA_BUSINESSES = [
+  "neighbourhood bakery", "dental clinic", "coaching centre", "hardware shop", "garment manufacturing unit",
+  "pharmacy", "cloud kitchen", "salon", "gym", "real estate agent", "school", "printing press", "furniture showroom",
+  "diagnostic lab", "travel agency", "wholesale distributor", "car service centre", "event caterer", "pet clinic",
+  "dairy supplier", "mobile repair shop", "architect's office", "packers and movers", "tuition teacher", "florist",
+  "electrical contractor", "organic farm", "jewellery shop", "physiotherapy clinic", "courier franchise",
+];
+const IDEA_SERVICES = ["an Android app that works offline", "a website", "a web platform for several kinds of user",
+  "custom software for daily operations", "an AI assistant that answers from the business's own documents",
+  "an automation that removes a repeat task"];
+const IDEA_STYLES = ["a before-and-after", "a question the owner asks every day", "a small daily moment that goes wrong",
+  "the end of a messy workaround (paper, spreadsheet or group chat)", "what the owner gets back (time, calm, control)"];
+const pick = (list, n) => [...list].sort(() => Math.random() - 0.5).slice(0, n);
 
 async function suggestIdea(env) {
   const list = await env.STORE.list({ prefix: "post:", limit: 10 });
   const recent = (await Promise.all(list.keys.map((k) => env.STORE.get(k.name, "json"))))
     .filter(Boolean).map((r) => r.headline).filter(Boolean);
-  const avoid = recent.length ? `Recent posts (pick a different angle): ${recent.join(" | ")}` : "";
-  const angle = ["mobile app", "website", "custom software", "AI or automation"][Math.floor(Math.random() * 4)];
-  const input = `Focus this one on: ${angle}. ${avoid}`;
-  const { text, provider } = await completeText(env, IDEA_PROMPT, input, { maxTokens: 800, temperature: 0.9 });
-  const idea = String(text || "").trim().split("\n").find((l) => l.trim())?.trim().replace(/^["'“]|["'”]$/g, "");
-  if (!idea) return fail("The AI didn't come up with an idea. Try again.", 502);
-  return json({ idea, provider });
+  const input = `Business types: ${pick(IDEA_BUSINESSES, 3).join("; ")}.\nService: ${pick(IDEA_SERVICES, 1)[0]}.\n` +
+    `Ad style: ${pick(IDEA_STYLES, 1)[0]}.` + (recent.length ? `\nAvoid repeating these recent posts: ${recent.join(" | ")}` : "");
+  const { text, provider } = await completeText(env, IDEA_PROMPT, input, { maxTokens: 1200, temperature: 1 });
+  let ideas = [];
+  try { ideas = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || "{}").ideas || []; } catch { /* fall back below */ }
+  if (!ideas.length) ideas = text.split("\n").map((l) => l.replace(/^[\s\-\d.)"“]+|["”]$/g, "").trim()).filter((l) => l.length > 20);
+  ideas = ideas.map((i) => String(i).trim()).filter(Boolean).slice(0, 3);
+  if (!ideas.length) return fail("The AI didn't come up with ideas. Try again.", 502);
+  return json({ ideas, idea: ideas[0], provider });
 }
 
 async function makeImage(request, env) {
@@ -276,7 +301,7 @@ async function makeImage(request, env) {
   // One-piece composition: the headline sits in the photo's own empty space, not on a separate banner.
   const prompt =
     `${scene.trim().replace(/\.?$/, ".")} A single full-bleed photograph that fills the entire frame edge to edge, ` +
-    `with calm, uncluttered negative space in the upper third. In that space, ${type} is set directly onto the photo ` +
+    `with a calm, uncluttered upper third. In that space, ${type} is set directly onto the photo ` +
     `as part of the image (no box, no banner, no border, no separate panel), reading "${headline.trim()}". ` +
     `${LIGHTING[g]}. ${IMAGE_STYLE}`;
   let cloudflareError;
