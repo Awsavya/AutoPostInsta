@@ -114,6 +114,63 @@ async function runModel(env, model, makeRequest) {
   throw new Error(`Cloudflare AI failed. ${lastError}`);
 }
 
+// Text (ideas, ad copy) goes through free text providers first, so Cloudflare's daily allowance is left for images.
+// Order: Groq → Gemini → OpenRouter → Cloudflare Workers AI. A provider is used only when its key is set.
+function textProviders(env) {
+  const list = [];
+  if (env.GROQ_API_KEY) list.push({
+    name: "Groq", url: "https://api.groq.com/openai/v1/chat/completions", key: env.GROQ_API_KEY,
+    model: env.GROQ_MODEL || "openai/gpt-oss-120b", extra: { reasoning_effort: "low" },
+  });
+  if (env.GEMINI_API_KEY) list.push({
+    name: "Gemini", url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", key: env.GEMINI_API_KEY,
+    model: env.GEMINI_MODEL || "gemini-flash-latest", extra: {},
+  });
+  if (env.OPENROUTER_API_KEY) list.push({
+    name: "OpenRouter", url: "https://openrouter.ai/api/v1/chat/completions", key: env.OPENROUTER_API_KEY,
+    model: env.OPENROUTER_MODEL || "google/gemma-4-31b-it:free", extra: {},
+  });
+  return list;
+}
+
+async function completeText(env, system, user, { maxTokens = 2000, temperature = 0.7 } = {}) {
+  const errors = [];
+  for (const p of textProviders(env)) {
+    try {
+      const resp = await fetch(p.url, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${p.key}`, "content-type": "application/json" },
+        body: JSON.stringify({
+          model: p.model, temperature, max_tokens: maxTokens, ...p.extra,
+          messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        }),
+      });
+      if (!resp.ok) { errors.push(`${p.name}: HTTP ${resp.status}`); continue; }
+      const text = (await resp.json()).choices?.[0]?.message?.content;
+      if (text?.trim()) return { text, provider: p.name };
+      errors.push(`${p.name}: empty answer`);
+    } catch (err) {
+      errors.push(`${p.name}: ${err.message}`);
+    }
+  }
+  // Last resort: Cloudflare Workers AI (shares the image allowance).
+  const body = env.TEXT_MODEL.includes("gpt-oss")
+    ? { instructions: system, input: user, reasoning: { effort: "low" } }
+    : { messages: [{ role: "system", content: system }, { role: "user", content: user }], max_tokens: 4000, temperature };
+  try {
+    const { resp, account } = await runModel(env, env.TEXT_MODEL, () => ({ headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
+    const r = (await resp.json()).result || {};
+    const text = r.response ?? r.choices?.[0]?.message?.content
+      ?? r.output?.flatMap((o) => o.content || []).find((c) => c.type === "output_text")?.text;
+    if (typeof text === "string" && text.trim()) return { text, provider: `Cloudflare ${account}` };
+    if (text && typeof text === "object") return { text: JSON.stringify(text), provider: `Cloudflare ${account}` };
+    errors.push("Cloudflare: empty answer");
+  } catch (err) {
+    errors.push(`Cloudflare: ${err.message}`);
+  }
+  throw new Error(`No AI could write text right now. ${errors.join(" · ")}`);
+}
+
 // ---------------- Buffer ----------------
 
 async function buffer(env, query, variables = {}) {
@@ -167,24 +224,12 @@ async function writeCopy(request, env) {
   const mood = ground === "ink" ? "dark, low-key" : "bright, high-key";
   const userText = `Ad idea: ${String(idea).slice(0, 800)}\nThe photo will be ${mood}; describe a scene that suits that lighting.\n` +
     `Return only the JSON object with the keys: ${schema.required.join(", ")}.`;
-  // gpt-oss models take the Responses-style body; others take chat messages.
-  const body = env.TEXT_MODEL.includes("gpt-oss")
-    ? { instructions: COPY_SYSTEM_PROMPT, input: userText, reasoning: { effort: "low" } }
-    : { messages: [{ role: "system", content: COPY_SYSTEM_PROMPT }, { role: "user", content: userText }], max_tokens: 4000, temperature: 0.7 };
-  const { resp, account } = await runModel(env, env.TEXT_MODEL, () => ({
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  }));
-  const data = await resp.json();
-  // Models answer in different shapes: {response}, OpenAI-style {choices}, or Responses-style {output}.
-  const r = data.result || {};
-  let copy = r.response ?? r.choices?.[0]?.message?.content
-    ?? r.output?.flatMap((o) => o.content || []).find((c) => c.type === "output_text")?.text;
-  if (typeof copy === "string") {
-    const match = copy.match(/\{[\s\S]*\}/);
-    try { copy = match ? JSON.parse(match[0]) : null; } catch { copy = null; }
-  }
-  if (!copy?.headline) return fail("The AI didn't return usable copy. Try again.", 502);
+  const { text, provider } = await completeText(env, COPY_SYSTEM_PROMPT, userText, { maxTokens: 3000 });
+  let copy = null;
+  const match = text.match(/\{[\s\S]*\}/);
+  try { copy = match ? JSON.parse(match[0]) : null; } catch { copy = null; }
+  if (!copy?.headline) return fail(`The AI (${provider}) didn't return usable copy. Try again.`, 502);
+  const account = provider;
 
   // Build the caption ourselves so the layout is always right: hook, paragraphs, CTA, then 5 clean hashtags.
   const tags = [...new Set((copy.hashtags || [])
@@ -215,16 +260,10 @@ async function suggestIdea(env) {
   const avoid = recent.length ? `Recent posts (pick a different angle): ${recent.join(" | ")}` : "";
   const angle = ["mobile app", "website", "custom software", "AI or automation"][Math.floor(Math.random() * 4)];
   const input = `Focus this one on: ${angle}. ${avoid}`;
-  const body = env.TEXT_MODEL.includes("gpt-oss")
-    ? { instructions: IDEA_PROMPT, input, reasoning: { effort: "low" } }
-    : { messages: [{ role: "system", content: IDEA_PROMPT }, { role: "user", content: input }], max_tokens: 2000, temperature: 0.9 };
-  const { resp } = await runModel(env, env.TEXT_MODEL, () => ({ headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
-  const r = (await resp.json()).result || {};
-  const text = r.response ?? r.choices?.[0]?.message?.content
-    ?? r.output?.flatMap((o) => o.content || []).find((c) => c.type === "output_text")?.text;
-  const idea = String(text || "").trim().replace(/^["'“]|["'”]$/g, "").split("\n")[0];
+  const { text, provider } = await completeText(env, IDEA_PROMPT, input, { maxTokens: 800, temperature: 0.9 });
+  const idea = String(text || "").trim().split("\n").find((l) => l.trim())?.trim().replace(/^["'“]|["'”]$/g, "");
   if (!idea) return fail("The AI didn't come up with an idea. Try again.", 502);
-  return json({ idea });
+  return json({ idea, provider });
 }
 
 async function makeImage(request, env) {

@@ -207,7 +207,7 @@ $("write-copy").addEventListener("click", () =>
     $("scene").value = copy.scene || "";
     $("alt").value = copy.alt || "";
     draw();
-    setStatus($("copy-status"), "Done. Read it through and edit anything that isn't right.", "ok");
+    setStatus($("copy-status"), `Done (${copy.account}). Read it through and edit anything that isn't right.`, "ok");
     $("scene-why").textContent = copy.why ? `Why this picture: ${copy.why}` : "";
   }));
 
