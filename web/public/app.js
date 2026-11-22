@@ -226,13 +226,18 @@ $("make-image").addEventListener("click", () =>
       method: "POST",
       body: { scene: $("scene").value, headline: $("headline").value, ground: ground() },
     });
-    const data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.result?.image) throw new Error(data.error || "The image didn't come back. Try again.");
-    state.scene = await loadImage(`data:image/jpeg;base64,${data.result.image}`);
+    const type = resp.headers.get("content-type") || "";
+    if (resp.ok && type.startsWith("image/")) {
+      state.scene = await createImageBitmap(await resp.blob()); // backup services send the image itself
+    } else {
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok || !data.result?.image) throw new Error(data.error || "The image didn't come back. Try again.");
+      state.scene = await loadImage(`data:image/jpeg;base64,${data.result.image}`);
+    }
     state.sceneIsAI = true;
     $("ai-label").checked = true;
     draw();
-    setStatus($("image-status"), `Image made (${resp.headers.get("x-ai-account") || "Cloudflare"}). Check the headline spelling in the preview.`, "ok");
+    setStatus($("image-status"), `Image made (${resp.headers.get("x-ai-account") || "AI"}). Check the headline spelling in the preview.`, "ok");
   }));
 
 $("own-photo").addEventListener("change", async (e) => {

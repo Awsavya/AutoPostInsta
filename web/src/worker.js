@@ -279,16 +279,69 @@ async function makeImage(request, env) {
     `with calm, uncluttered negative space in the upper third. In that space, ${type} is set directly onto the photo ` +
     `as part of the image (no box, no banner, no border, no separate panel), reading "${headline.trim()}". ` +
     `${LIGHTING[g]}. ${IMAGE_STYLE}`;
-  const { resp, account } = await runModel(env, env.IMAGE_MODEL, () => {
-    const form = new FormData();
-    form.append("prompt", prompt);
-    form.append("width", "1024");
-    form.append("height", "1024");
-    return { body: form, headers: {} };
+  let cloudflareError;
+  try {
+    const { resp, account } = await runModel(env, env.IMAGE_MODEL, () => {
+      const form = new FormData();
+      form.append("prompt", prompt);
+      form.append("width", "1024");
+      form.append("height", "1024");
+      return { body: form, headers: {} };
+    });
+    // Pass Cloudflare's JSON ({"result":{"image":"<base64>"}}) straight through: parsing ~1.5 MB here
+    // would eat the free plan's CPU budget, so the browser decodes it instead.
+    return new Response(resp.body, { headers: { "content-type": "application/json", "x-ai-account": `Cloudflare ${account}` } });
+  } catch (err) {
+    cloudflareError = err.message;
+  }
+  // Backup: Z-Image Turbo on Hugging Face (free daily GPU quota tied to HF_TOKEN).
+  if (env.HF_TOKEN) {
+    for (const space of HF_SPACES) {
+      try {
+        const image = await hfGenerate(env, space, prompt);
+        return new Response(image.body, { headers: { "content-type": image.type, "x-ai-account": `Hugging Face (${space.label})` } });
+      } catch (err) {
+        cloudflareError += ` · ${space.label}: ${err.message}`;
+      }
+    }
+  }
+  return fail(`No image service is available right now. ${cloudflareError}`, 503);
+}
+
+// Public Z-Image Turbo demos on Hugging Face, called through Gradio's HTTP API. The official one first.
+const HF_SPACES = [
+  { label: "Z-Image", host: "tongyi-mai-z-image-turbo.hf.space", api: "generate",
+    data: (prompt) => [prompt, "1024x1024 ( 1:1 )", 42, 8, 3.0, true, []],
+    pick: (out) => out?.[0]?.[0]?.image?.url },
+  { label: "Z-Image mirror", host: "mrfakename-z-image-turbo.hf.space", api: "generate_image",
+    data: (prompt) => [prompt, 1024, 1024, 9, 42, true],
+    pick: (out) => out?.[0]?.url },
+];
+
+async function hfGenerate(env, space, prompt) {
+  const auth = { Authorization: `Bearer ${env.HF_TOKEN}`, "user-agent": "AutoPostInsta/1.0" };
+  const base = `https://${space.host}/gradio_api/call/${space.api}`;
+  const start = await fetch(base, {
+    method: "POST",
+    headers: { ...auth, "content-type": "application/json" },
+    body: JSON.stringify({ data: space.data(prompt) }),
   });
-  // Pass Cloudflare's JSON ({"result":{"image":"<base64>"}}) straight through: parsing ~1.5 MB here
-  // would eat the free plan's CPU budget, so the browser decodes it instead.
-  return new Response(resp.body, { headers: { "content-type": "application/json", "x-ai-account": account } });
+  if (!start.ok) throw new Error(`HTTP ${start.status}`);
+  const { event_id: eventId } = await start.json();
+  const stream = await (await fetch(`${base}/${eventId}`, { headers: auth })).text();
+  const blocks = stream.split("\n\n");
+  const error = blocks.find((b) => b.includes("event: error"));
+  if (error) {
+    const msg = error.split("data:")[1]?.trim() || "error";
+    throw new Error(/quota|exceeded/i.test(msg) ? "free daily GPU quota used up" : msg.slice(0, 120));
+  }
+  const done = blocks.find((b) => b.includes("event: complete"));
+  if (!done) throw new Error("no result");
+  const url = space.pick(JSON.parse(done.split("data:")[1].trim()));
+  if (!url) throw new Error("no image in result");
+  const img = await fetch(url, { headers: auth });
+  if (!img.ok) throw new Error(`image download HTTP ${img.status}`);
+  return { body: img.body, type: img.headers.get("content-type") || "image/png" };
 }
 
 async function uploadImage(request, env) {

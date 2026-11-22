@@ -32,6 +32,8 @@ SECRET_KEYS = {
     "GROQ_API_KEY": "GROQ_API_KEY",
     "GEMINI_API_KEY": "GEMINI_API_KEY",
     "OPENROUTER_API_KEY": "OPENROUTER_API_KEY",
+    # Free image backup: Z-Image Turbo on Hugging Face (read token).
+    "HF_TOKEN": "HF_TOKEN",
     # Backup Cloudflare accounts, used in order once earlier ones run out: _2, _3 … _20 (the worker reads the same range).
     **{f"CF_{part}_{n}": f"CF_{part}_{n}" for n in range(2, 21) for part in ("ACCOUNT_ID", "API_TOKEN")},
 }

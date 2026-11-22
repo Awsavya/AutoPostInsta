@@ -25,6 +25,7 @@ values = {
     "GROQ_API_KEY": env.get("GROQ_API_KEY", ""),
     "GEMINI_API_KEY": env.get("GEMINI_API_KEY", ""),
     "OPENROUTER_API_KEY": env.get("OPENROUTER_API_KEY", ""),
+    "HF_TOKEN": env.get("HF_TOKEN", ""),
     "CF_ACCOUNT_ID": env.get("CF_ACCOUNT_ID", ""),
     "CF_API_TOKEN": env.get("CF_API_TOKEN", ""),
     **{f"CF_{part}_{n}": env.get(f"CF_{part}_{n}", "") for n in range(2, 21) for part in ("ACCOUNT_ID", "API_TOKEN")},
