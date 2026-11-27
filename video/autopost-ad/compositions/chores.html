@@ -1,0 +1,42 @@
+<template>
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; background: #15131C; overflow: hidden; }
+    #chores-all { position: absolute; inset: 0; }
+    .chore { position: absolute; left: 150px; width: 700px; display: flex; align-items: center; gap: 26px;
+      background: #FCFBFE; color: #15131C; border-radius: 24px; padding: 30px 36px;
+      font: 650 50px/1.1 "Archivo", sans-serif; letter-spacing: -0.01em; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+    .chore i { flex: none; width: 44px; height: 44px; border: 4px solid #A9A5B5; border-radius: 50%; }
+    #chores-days { position: absolute; left: 120px; top: 930px; width: 780px; font: 800 112px/1.0 "Archivo", sans-serif;
+      letter-spacing: -0.025em; color: #FFC83D; }
+    #chores-days span { display: block; }
+  </style>
+  <div id="root" data-composition-id="chores" data-width="1080" data-height="1920">
+    <div id="chores-all" class="clip" data-start="0" data-duration="2.5" data-layout-allow-overlap data-layout-allow-occlusion>
+      <div id="chore-1" class="chore" style="top: 330px"><i></i>Think of an idea</div>
+      <div id="chore-2" class="chore" style="top: 470px"><i></i>Make the image</div>
+      <div id="chore-3" class="chore" style="top: 610px"><i></i>Write the caption</div>
+      <div id="chore-4" class="chore" style="top: 750px"><i></i>Post it on time</div>
+      <div id="chores-days">
+        <span id="day-w1">Every.</span><span id="day-w2">Single.</span><span id="day-w3">Day.</span>
+      </div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    const tilt = [-3, 2.5, -1.5, 3.5];
+    // Four chores drop into a loose pile, one every 0.3 s.
+    [1, 2, 3, 4].forEach((n, i) => {
+      tl.fromTo(`#chore-${n}`, { y: -520, rotation: tilt[i] * 3, opacity: 0, filter: "blur(10px)" },
+        { y: 0, rotation: tilt[i], opacity: 1, filter: "blur(0px)", duration: 0.45, ease: "expo.out" }, 0.08 + i * 0.3);
+    });
+    // "Every. Single. Day." slams in word by word.
+    [1, 2, 3].forEach((n, i) => {
+      tl.fromTo(`#day-w${n}`, { scale: 1.5, opacity: 0, filter: "blur(10px)", transformOrigin: "0% 50%" },
+        { scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out" }, 1.05 + i * 0.2);
+    });
+    // Whip up into the app.
+    tl.fromTo("#chores-all", { y: 0, filter: "blur(0px)" }, { y: -1400, filter: "blur(18px)", duration: 0.32, ease: "power3.in" }, 2.17);
+    window.__timelines["chores"] = tl;
+  </script>
+</template>

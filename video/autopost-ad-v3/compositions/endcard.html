@@ -1,0 +1,140 @@
+<template>
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+
+    #root { position: absolute; inset: 0; overflow: hidden; background: #F5F4F8; }
+
+    #endcard-stage { position: absolute; inset: 0; background: #F5F4F8; overflow: hidden; }
+
+    /* ---- wordmark-tiles (lifted from components/wordmark-tiles.html, tiles cropped from the PNG) ----
+       The PNG is a 41 x 7 grid of 60 px pixel cells (2460 x 420). The grid is built at native size
+       and scaled to 950 px wide (full safe width), so every tile crop lands exactly on one logo cell. */
+    #endcard-mark { position: absolute; left: 65px; top: 380px; width: 950px; height: 162px; }
+    #endcard-mark-scale {
+      position: absolute; left: 0; top: 0; width: 2460px; height: 420px;
+      transform: scale(0.386179); transform-origin: 0 0;
+      display: grid; grid-template-columns: repeat(41, 60px); grid-template-rows: repeat(7, 60px);
+    }
+    .endcard-tile { position: relative; width: 60px; height: 60px; }
+    .endcard-noise, .endcard-resolved { position: absolute; display: block; transform-origin: 50% 50%; }
+    .endcard-noise { left: 4px; top: 4px; width: 52px; height: 52px; box-shadow: 0 6px 10px rgba(21, 19, 28, 0.16); }
+    .endcard-noise-ink { background: #15131C; }
+    .endcard-noise-yel { background: #FFC83D; }
+    .endcard-noise-gra { background: #57536A; }
+    .endcard-noise-pale { background: #8E8E8A; } /* the logo's own grey */
+    .endcard-resolved {
+      inset: 0;
+      background-image: url("assets/awsavya-logo.png");
+      background-size: 2460px 420px;
+      background-repeat: no-repeat;
+    }
+
+    /* ---- cta-close (lifted from components/cta-close.html, restyled to the tokens) ---- */
+    #endcard-line {
+      position: absolute; left: 65px; top: 600px; width: 950px; margin: 0;
+      font-family: "Archivo", sans-serif; font-weight: 800; font-size: 140px;
+      line-height: 1.0; letter-spacing: -0.025em; color: #15131C;
+    }
+    .endcard-row { display: block; white-space: nowrap; }
+    .endcard-m { display: inline-block; overflow: hidden; padding: 0.06em 0 0.14em; margin-top: -0.06em; vertical-align: bottom; }
+    .endcard-w { display: inline-block; }
+
+    #endcard-btn {
+      position: absolute; left: 65px; top: 1000px; height: 100px;
+      padding: 0 46px; border-radius: 999px; background: #FFC83D; color: #15131C;
+      display: flex; align-items: center;
+      font-family: "Martian Mono", monospace; font-weight: 700; font-size: 46px;
+      letter-spacing: 0.01em; white-space: nowrap; transform-origin: 18% 50%;
+      box-shadow: 0 24px 48px rgba(21, 19, 28, 0.16), 0 3px 0 rgba(21, 19, 28, 0.10);
+    }
+  </style>
+
+  <div id="root" data-composition-id="endcard" data-width="1080" data-height="1920">
+    <div id="endcard-stage" class="clip" data-start="0" data-duration="3" data-track-index="0">
+      <div id="endcard-mark" role="img" aria-label="AWSAVYA">
+        <div id="endcard-mark-scale"></div>
+      </div>
+
+      <h2 id="endcard-line" aria-label="We'll build yours.">
+        <span class="endcard-row"><span class="endcard-m"><span class="endcard-w">We’ll</span></span> <span class="endcard-m"><span class="endcard-w">build</span></span></span>
+        <span class="endcard-row"><span class="endcard-m"><span class="endcard-w">yours.</span></span></span>
+      </h2>
+
+      <div id="endcard-btn">TALK TO US · AWSAVYA.IN</div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var COLS = 41, ROWS = 7, CELL = 60;
+      var grid = document.getElementById("endcard-mark-scale");
+
+      // Fixed-seed LCG (from wordmark-tiles): same noise field on every render.
+      var seed = 0x57a7c1e;
+      function rnd() { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; }
+
+      var tiles = [];
+      for (var r = 0; r < ROWS; r++) {
+        for (var c = 0; c < COLS; c++) {
+          var tile = document.createElement("span");
+          tile.className = "endcard-tile";
+          var res = document.createElement("span");
+          res.className = "endcard-resolved";
+          res.style.backgroundPosition = (-c * CELL) + "px " + (-r * CELL) + "px";
+          var noise = document.createElement("span");
+          var p = rnd();
+          noise.className = "endcard-noise " + (p < 0.36 ? "endcard-noise-ink" : p < 0.66 ? "endcard-noise-yel" : p < 0.84 ? "endcard-noise-gra" : "endcard-noise-pale");
+          noise.dataset.o = String(0.78 + rnd() * 0.22);
+          tile.appendChild(res);
+          tile.appendChild(noise);
+          grid.appendChild(tile);
+          // Wave rank from the preset, measured in 10 column bands so the wave crosses
+          // the mark like the plan's 10-column grid, with the preset's sine pockets.
+          var band = (c / COLS) * 10;
+          tiles.push({ res: res, noise: noise, rank: band + r * 0.68 + Math.sin(r * 1.7 + band * 0.42) * 1.6 });
+        }
+      }
+      var minR = Infinity, maxR = -Infinity;
+      tiles.forEach(function (t) { minR = Math.min(minR, t.rank); maxR = Math.max(maxR, t.rank); });
+
+      var WAVE_START = 0.03, WAVE_SPAN = 0.26, TILE_DUR = 0.20; // last tile settles at 0.49 s (15.49 abs), before the line lands
+
+      var tl = gsap.timeline({ paused: true });
+
+      // Arrival: the mark rises into place, continuing the upward whip of the slam that just left.
+      tl.fromTo("#endcard-mark", { y: 46 }, { y: 0, duration: 0.55, ease: "expo.out" }, 0);
+
+      tiles.forEach(function (t) {
+        var at = WAVE_START + ((t.rank - minR) / (maxR - minR)) * WAVE_SPAN;
+        // Noise pixel collapses (accelerating), then the true logo cell snaps in with one small overshoot.
+        tl.fromTo(t.noise, { opacity: Number(t.noise.dataset.o), scale: 1 },
+          { scale: 0, duration: 0.14, ease: "power3.in" }, at);
+        tl.fromTo(t.res, { scale: 0.5 },
+          { scale: 1, duration: TILE_DUR - 0.08, ease: "back.out(1.6)" }, at + 0.08);
+        tl.fromTo(t.res, { opacity: 0 }, { opacity: 1, duration: 0.06, ease: "none" }, at + 0.08);
+      });
+
+      // Once the wave has settled, the resolved mark takes the printed depth the noise pixels had.
+      tl.fromTo("#endcard-mark", { filter: "drop-shadow(0px 2px 3px rgba(21, 19, 28, 0))" },
+        { filter: "drop-shadow(0px 2px 3px rgba(21, 19, 28, 0.14))", duration: 0.2, ease: "power2.out" }, 0.49);
+
+      // cta-close: the action line rises word by word out of masks (no fade), 0.30-0.90 (15.30-15.90 abs).
+      tl.fromTo("#endcard-line .endcard-w", { yPercent: 110 },
+        { yPercent: 0, duration: 0.45, ease: "power4.out", stagger: 0.075 }, 0.30);
+
+      // Capsule pops at 15.95, just ahead of the 16.0 beat and ~3 frames before the spoken "AW-" onset (16.06): 0.8 > 1.05 > 1.0, settled by 16.20.
+      // (0.95 not 1.0 so the closing line clears the 2.0 s line_unread floor, measured to the last frame 17.967.)
+      tl.fromTo("#endcard-btn", { scale: 0.8, y: 18 },
+        { scale: 1, y: 0, duration: 0.25, ease: "back.out(1.6)" }, 0.95);
+      tl.fromTo("#endcard-btn", { opacity: 0 }, { opacity: 1, duration: 0.001, ease: "none" }, 0.95); // hard on: the scale pop carries the entrance
+
+      // Hold dead still 1.20-3.00 (grain only, from the root); pin the timeline to the full slot.
+      tl.set({}, {}, 3.0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["endcard"] = tl;
+    })();
+  </script>
+</template>

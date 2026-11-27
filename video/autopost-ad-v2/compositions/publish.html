@@ -1,0 +1,77 @@
+<template>
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+    #root { position: absolute; inset: 0; background: #F5F4F8; overflow: hidden; }
+    #pub-all { position: absolute; inset: 0; font-family: "Archivo", sans-serif; color: #15131C; }
+    #pub-card { position: absolute; left: 120px; top: 310px; width: 768px; background: #FCFBFE; border: 2px solid #DEDCE5;
+      border-radius: 28px; padding: 36px 40px; box-shadow: 0 24px 60px rgba(21,19,28,.12); }
+    .pub-h2 { display: flex; align-items: center; gap: 16px; font-weight: 600; font-size: 40px; margin-bottom: 22px; }
+    .pub-step { font: 500 28px "Martian Mono", monospace; color: #57536A; border: 2px solid #C9C6D2; border-radius: 999px; padding: 4px 14px; }
+    .pub-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pub-mode { border: 2px solid #C9C6D2; border-radius: 16px; padding: 16px 8px; text-align: center; font-size: 30px; }
+    .pub-mode.on { background: #15131C; border-color: #15131C; color: #F5F4F8; }
+    .pub-label { font-weight: 500; font-size: 30px; margin: 22px 0 10px; }
+    .pub-input { background: #fff; border: 2px solid #C9C6D2; border-radius: 16px; padding: 16px 22px; font-size: 34px; }
+    #pub-btn { position: relative; margin-top: 24px; background: #15131C; color: #F5F4F8; border-radius: 16px; padding: 22px; text-align: center; font-size: 34px; font-weight: 500; }
+    #pub-btn-busy { opacity: 0; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
+    #pub-status { opacity: 0; margin-top: 16px; font-size: 31px; color: #1F6B3A; font-weight: 500; min-height: 40px; }
+    #pub-line { position: absolute; left: 120px; top: 975px; width: 780px; font: 800 60px/1.05 "Archivo", sans-serif; letter-spacing: -0.02em; }
+    #pub-line span { display: inline-block; margin-right: 0.22em; }
+    .pub-day { position: absolute; top: 1062px; width: 96px; }
+    .pub-day b { display: block; font: 600 28px "Martian Mono", monospace; color: #57536A; text-align: center; margin-bottom: 8px; }
+    .pub-day img { display: block; width: 96px; height: 120px; border-radius: 8px; box-shadow: 0 0 0 2px #DEDCE5; }
+    .pub-day i { position: absolute; right: -8px; bottom: -10px; width: 40px; height: 40px; border-radius: 50%; background: #FFC83D;
+      display: flex; align-items: center; justify-content: center; font: 800 26px/1 "Archivo", sans-serif; font-style: normal; color: #15131C;
+      box-shadow: 0 6px 14px rgba(21,19,28,.25); }
+    #pub-cursor { position: absolute; left: 0; top: 0; width: 84px; height: 84px; }
+  </style>
+  <div id="root" data-composition-id="publish" data-width="1080" data-height="1920">
+    <div id="pub-all" class="clip" data-start="0" data-duration="2.5" data-layout-allow-overlap data-layout-allow-occlusion>
+      <div id="pub-card">
+        <div class="pub-h2"><span class="pub-step">05</span> Publish</div>
+        <div class="pub-modes">
+          <div class="pub-mode on">Schedule</div><div class="pub-mode">Post now</div>
+          <div class="pub-mode">Add to queue</div><div class="pub-mode">Buffer draft</div>
+        </div>
+        <div class="pub-label">Date and time</div>
+        <div class="pub-input">28/11/2026, 08:00</div>
+        <div id="pub-btn"><span id="pub-btn-label">Publish</span><span id="pub-btn-busy">Publishing…</span></div>
+        <div id="pub-status">Scheduled for 28 Nov, 8:00 am.</div>
+      </div>
+      <div id="pub-line"><span id="pl-1">Posted</span><span id="pl-2">on</span><span id="pl-3">time.</span><span id="pl-4">Every</span><span id="pl-5">day.</span></div>
+      <div id="pub-d1" class="pub-day" style="left:120px"><b>MON</b><img src="assets/day-1.jpg" alt=""><i id="pub-c1">✓</i></div>
+      <div id="pub-d2" class="pub-day" style="left:232px"><b>TUE</b><img src="assets/day-2.jpg" alt=""><i id="pub-c2">✓</i></div>
+      <div id="pub-d3" class="pub-day" style="left:344px"><b>WED</b><img src="assets/day-3.jpg" alt=""><i id="pub-c3">✓</i></div>
+      <div id="pub-d4" class="pub-day" style="left:456px"><b>THU</b><img src="assets/day-4.jpg" alt=""><i id="pub-c4">✓</i></div>
+      <div id="pub-d5" class="pub-day" style="left:568px"><b>FRI</b><img src="assets/day-5.jpg" alt=""><i id="pub-c5">✓</i></div>
+      <div id="pub-d6" class="pub-day" style="left:680px"><b>SAT</b><img src="assets/day-6.jpg" alt=""><i id="pub-c6">✓</i></div>
+      <div id="pub-d7" class="pub-day" style="left:792px"><b>SUN</b><img src="assets/day-7.jpg" alt=""><i id="pub-c7">✓</i></div>
+      <svg id="pub-cursor" viewBox="0 0 24 24"><path d="M3 2l17 10-7.5 1.6L9 21z" fill="#15131C" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    // Scene start = beat 10.0.
+    tl.fromTo("#pub-card", { y: 180, opacity: 0, filter: "blur(12px)" }, { y: 0, opacity: 1, filter: "blur(0px)", duration: 0.32, ease: "expo.out" }, 0);
+    // Cursor clicks Publish on beat 10.5.
+    tl.fromTo("#pub-cursor", { x: 980, y: 1500 }, { x: 520, y: 770, duration: 0.32, ease: "power2.inOut" }, 0.15);
+    tl.fromTo("#pub-btn", { scale: 1 }, { scale: 0.95, duration: 0.06, ease: "power2.out" }, 0.5);
+    tl.to("#pub-btn", { scale: 1, duration: 0.16, ease: "power2.out" }, 0.56);
+    tl.fromTo("#pub-btn-label", { opacity: 1 }, { opacity: 0, duration: 0.05 }, 0.52);
+    tl.fromTo("#pub-btn-busy", { opacity: 0 }, { opacity: 0.8, duration: 0.05 }, 0.52);
+    tl.to("#pub-btn-busy", { opacity: 0, duration: 0.05 }, 1.0);
+    tl.to("#pub-btn-label", { opacity: 1, duration: 0.05 }, 1.0);
+    // Beat 11.0: scheduled.
+    tl.fromTo("#pub-status", { opacity: 0, filter: "blur(6px)" }, { opacity: 1, filter: "blur(0px)", duration: 0.14, ease: "power4.out" }, 1.0);
+    tl.to("#pub-cursor", { x: 1100, y: 1700, duration: 0.25, ease: "power3.in" }, 1.02);
+    [1, 2, 3, 4, 5].forEach((n, i) => tl.fromTo(`#pl-${n}`, { opacity: 0, filter: "blur(6px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.12, ease: "power4.out" }, 1.0 + i * 0.05));
+    // A week of posts lands on the eighths 11.25-12.0, each checked off.
+    [1, 2, 3, 4, 5, 6, 7].forEach((n, i) => {
+      tl.fromTo(`#pub-d${n}`, { y: 50, opacity: 0 }, { y: 0, opacity: 1, duration: 0.22, ease: "expo.out" }, 1.25 + i * 0.125);
+      tl.fromTo(`#pub-c${n}`, { scale: 0 }, { scale: 1, duration: 0.2, ease: "back.out(1.7)" }, 1.32 + i * 0.125);
+    });
+    window.__timelines["publish"] = tl;
+  </script>
+</template>

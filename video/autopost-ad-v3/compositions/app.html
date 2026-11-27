@@ -1,0 +1,755 @@
+<template>
+  <!--
+    app (S4 S5 S6 S7, abs 5.0-13.0, local 0-8.0): one continuous camera through the rebuilt AutoPostInsta app.
+
+    Presets wired in (copied and re-authored inside this file; shared component files untouched):
+      - ui-focus-zoom   camera-servo law: ONE world wrapper, translate + scale written by one applyCamera
+                        writer from plain state, cues per step (camA = the card column, camB = the publish sheet).
+      - line-swap       masked header step lines (YOU / AI chip + Archivo 800 84 px), swap on the beat.
+      - typed-prompt    chunked human cadence with a typo + correction ("owenrs" -> "owners"), finite caret.
+      - touch-indicator dark-polarity tap disc, 3 frames of anticipation, 0.96 press.
+      - streaming-text  token bursts (GAPS rhythm), each word lands graphite and inks over 0.27 s.
+      - halftone-dissolve  seeded threshold grid (18 cols), yellow #FFC83D ink dots lead clip-path windows
+                        onto assets/poster-photo.jpg, mounted on the 680 x 447 photo band only.
+      - spring-pop      chip + CTA, back.out(1.6).
+      - per-word-rise   poster headline, 0.08 s stagger.
+      - gloss-sweep     one diagonal specular pass + restrained 1.04 -> 1.0 landing, then dead still.
+      - sheet-spring-up sampled spring table verbatim (overshoot 192 px, settles in 0.72 s).
+      - success-check   ring pop + tick draw inside the Publish button.
+      - hw-callout-circle  wobbled ink ellipse (hwWobbleEllipse) drawn around the status, no label.
+
+    HANDOFF IN (local 0 = dive's last frame): header paper to y 390 with the pixel wordmark at x 65 / y 166,
+      card 01 at x 65-1015, y 430; card 02 at y 1107. Camera at rest, scale 1.
+    HANDOFF OUT (local 8.0 = everyday frame 0): the receded hero poster's rect is x 260-820, y 530-1230
+      (560 x 700, radius 14), which is everyday's front-card rest rect (same-rect match cut).
+
+    Everything procedural (cameras, typing, caret, halftone) is a pure function of timeline time, written
+    by one setter on a clock proxy, so any seek order lands the same frame.
+  -->
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+
+    #root {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #F5F4F8;
+      color: #15131C;
+      font-family: "Archivo", sans-serif;
+    }
+    #app-stage { position: absolute; inset: 0; overflow: hidden; background: #F5F4F8; }
+    #app-stage *, #app-stage *::before, #app-stage *::after { box-sizing: border-box; }
+
+    /* ---------------- camera worlds (camera-servo: one wrapper each) ---------------- */
+    .app-cam { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; transform-origin: 0 0; }
+    #app-camA { z-index: 1; }
+    #app-colscrim { position: absolute; inset: 0; z-index: 2; background: #F5F4F8; opacity: 0; }
+    #app-camB { z-index: 4; }
+
+    /* ---------------- the real cards (same build as dive's handoff frame) ---------------- */
+    .app-card {
+      position: absolute;
+      left: 65px;
+      width: 950px;
+      padding: 48px 52px;
+      background: #FCFBFE;
+      border: 2px solid #DEDCE5;
+      border-radius: 36px;
+      box-shadow: 0 2px 6px rgba(21, 19, 28, 0.05);
+    }
+    .app-h2 {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      margin: 0;
+      height: 73.6px;
+      font: 600 64px/1.15 "Archivo", sans-serif;
+      letter-spacing: -0.01em;
+      color: #15131C;
+    }
+    .app-step {
+      font: 400 42px/1 "Martian Mono", monospace;
+      letter-spacing: 0.02em;
+      color: #57536A;
+      border: 2px solid #C9C6D2;
+      border-radius: 999px;
+      padding: 8px 22px 9px;
+    }
+    .app-label {
+      display: block;
+      margin: 34px 0 18px;
+      height: 57.2px;
+      font: 500 44px/1.3 "Archivo", sans-serif;
+      color: #15131C;
+      white-space: nowrap;
+    }
+    .app-field {
+      position: relative;
+      height: 110px;
+      background: #FFFFFF;
+      border: 2px solid #C9C6D2;
+      border-radius: 26px;
+      font: 400 44px/106px "Archivo", sans-serif;
+      color: #15131C;
+      padding: 0 28px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .app-area { height: 220px; line-height: 1.3; padding: 24px 28px; white-space: normal; }
+    .app-row { display: flex; gap: 24px; margin-top: 36px; }
+    .app-btn {
+      position: relative;
+      display: block;
+      height: 106.4px;
+      font: 500 42px/1.2 "Archivo", sans-serif;
+      white-space: nowrap;
+      border-radius: 26px;
+      padding: 26px 0;
+      text-align: center;
+      border: 2px solid #15131C;
+      color: #15131C;
+    }
+    .app-btn-ghost { width: 372.8px; background: transparent; border-color: #C9C6D2; }
+    .app-btn-primary { width: 338.8px; background: #FFC83D; }
+    .app-btn-label { position: absolute; left: 0; right: 0; top: 26px; }
+
+    #app-card-01 { top: 430px; }
+    #app-card-02 { top: 1107px; }
+    #app-card-03 { top: 2088px; }
+    #app-card-04 { top: 2628px; }
+
+    #app-typed-line { white-space: pre-wrap; }
+    #app-caret {
+      display: inline-block;
+      width: 4px;
+      height: 54px;
+      margin-left: 3px;
+      vertical-align: -9px;
+      background: #15131C;
+      opacity: 0;
+    }
+    .app-ring {
+      position: absolute;
+      left: 113px;
+      width: 854px;
+      border: 4px solid #15131C;
+      border-radius: 32px;
+      opacity: 0;
+    }
+    #app-ring-01 { top: 655px; height: 236px; }
+    #app-ring-02 { top: 1331.8px; height: 126px; }
+    .app-w { opacity: 0; }
+    #app-f3 { line-height: 1.3; padding: 24px 28px; white-space: normal; }
+
+    /* Empty preview canvas in the column: identical to the hero poster's skeleton (same-rect match). */
+    .app-canvas {
+      position: relative;
+      width: 680px;
+      height: 850px;
+      margin: 34px auto 0;
+      border-radius: 17px;
+      overflow: hidden;
+      background: #F5F4F8;
+      box-shadow: 0 1px 2px rgba(21, 19, 28, 0.06), 0 0 0 2px #DEDCE5;
+    }
+
+    /* ---------------- poster (live HTML in make_poster.py's 1080 x 1350 layout) ---------------- */
+    #app-poster-lift {
+      position: absolute;
+      left: 200px;
+      top: 390px;
+      width: 680px;
+      height: 850px;
+      z-index: 3;
+      opacity: 0;
+    }
+    #app-poster {
+      position: absolute;
+      inset: 0;
+      border-radius: 17px;
+      overflow: hidden;
+      background: #F5F4F8;
+      box-shadow: 0 1px 2px rgba(21, 19, 28, 0.06), 0 2px 4px rgba(21, 19, 28, 0);
+    }
+    .app-pinner {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1080px;
+      height: 1350px;
+      transform: scale(0.62963);
+      transform-origin: 0 0;
+    }
+    .app-skel { position: absolute; background: #E8E6EE; border-radius: 12px; }
+    .app-band { position: absolute; left: 0; top: 350px; width: 1080px; height: 710px; background: #DEDCE5; }
+    #app-photo-win { position: absolute; left: 0; top: 350px; width: 1080px; height: 710px; clip-path: path("M 0 0 Z"); }
+    #app-photo-win img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    #app-ink { position: absolute; left: 0; top: 350px; width: 1080px; height: 710px; }
+    #app-p-label {
+      position: absolute; left: 64px; top: 52px; height: 44px; padding: 0 16px; border-radius: 22px;
+      background: #FFC83D; font: 600 22px/44px "Martian Mono", monospace; color: #15131C; white-space: nowrap;
+      transform-origin: 0% 50%; opacity: 0;
+    }
+    #app-p-head {
+      position: absolute; left: 61px; top: 118px; width: 960px;
+      font: 800 86px/1.04 "Archivo", sans-serif; letter-spacing: -0.01em; color: #15131C;
+    }
+    .app-pw { display: inline-block; margin-right: 0.24em; opacity: 0; }
+    #app-p-sub {
+      position: absolute; left: 64px; top: 1092px; width: 952px;
+      font: 450 32px/43px "Archivo", sans-serif; color: #15131C; opacity: 0;
+    }
+    #app-p-logo { position: absolute; left: 64px; top: 1252px; height: 40px; opacity: 0; }
+    #app-p-cta {
+      position: absolute; right: 64px; top: 1242px; height: 60px; padding: 0 24px; border-radius: 30px;
+      background: #FFC83D; font: 600 22px/60px "Martian Mono", monospace; color: #15131C; white-space: nowrap;
+      transform-origin: 100% 50%; opacity: 0;
+    }
+    #app-gloss {
+      --app-sweep: -30;
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      opacity: 0;
+      pointer-events: none;
+      background: linear-gradient(
+        115deg,
+        transparent calc(var(--app-sweep) * 1% - 22%),
+        rgba(255, 255, 255, 0.06) calc(var(--app-sweep) * 1% - 9%),
+        rgba(255, 255, 255, 0.62) calc(var(--app-sweep) * 1%),
+        rgba(255, 255, 255, 0.08) calc(var(--app-sweep) * 1% + 9%),
+        transparent calc(var(--app-sweep) * 1% + 22%)
+      );
+    }
+    #app-dim { position: absolute; inset: 0; z-index: 6; background: #15131C; opacity: 0; }
+
+    /* ---------------- 05 Publish sheet ---------------- */
+    #app-sheet {
+      position: absolute;
+      left: 65px;
+      top: 470px;
+      width: 950px;
+      height: 1700px;
+      background: #FFFFFF;
+      border: 3px solid #15131C;
+      border-radius: 36px;
+      box-shadow: 0 -18px 60px rgba(21, 19, 28, 0.16), 0 -2px 8px rgba(21, 19, 28, 0.06);
+      opacity: 0;
+    }
+    #app-sheet > * { position: absolute; }
+    #app-sh-h2 { left: 52px; top: 36px; }
+    .app-mode {
+      width: 413px;
+      height: 88px;
+      border: 2px solid #C9C6D2;
+      border-radius: 26px;
+      font: 500 42px/84px "Archivo", sans-serif;
+      text-align: center;
+      color: #15131C;
+      white-space: nowrap;
+    }
+    .app-mode.app-on { background: #15131C; border-color: #15131C; color: #F5F4F8; }
+    #app-m1 { left: 52px; top: 134px; }
+    #app-m2 { left: 479px; top: 134px; }
+    #app-m3 { left: 52px; top: 236px; }
+    #app-m4 { left: 479px; top: 236px; }
+    #app-sh-label { left: 52px; top: 346px; margin: 0; }
+    #app-sh-when { left: 52px; top: 413px; width: 840px; height: 94px; line-height: 90px; }
+    #app-sh-check {
+      left: 52px; top: 527px; height: 52px; display: flex; align-items: center; gap: 20px;
+      font: 400 42px/52px "Archivo", sans-serif; color: #15131C; white-space: nowrap;
+    }
+    .app-box { width: 48px; height: 48px; border-radius: 12px; background: #15131C; display: grid; place-items: center; }
+    .app-box svg { width: 34px; height: 34px; fill: none; stroke: #F5F4F8; stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; }
+    #app-pub {
+      left: 52px; top: 599px; width: 840px; height: 96px;
+      background: #FFC83D; border: 2px solid #15131C; border-radius: 26px;
+      font: 500 44px/92px "Archivo", sans-serif; text-align: center; color: #15131C;
+    }
+    #app-pub-label { position: absolute; left: 0; right: 0; top: 0; }
+    #app-check {
+      position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px;
+      display: grid; place-items: center;
+    }
+    #app-check svg {
+      width: 76px; height: 76px; fill: none; stroke: #15131C; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round;
+      opacity: 0;
+      filter: blur(var(--app-ck-blur, 0px));
+      transform: rotate(var(--app-ck-rot, 0deg)) scale(var(--app-ck-scale, 1));
+    }
+    #app-check circle { opacity: 0.4; }
+    #app-check path { stroke-dasharray: 36; stroke-dashoffset: var(--app-ck-dash, 36); }
+    #app-status {
+      left: 0; top: 713px; width: 944px; height: 66px; overflow: hidden; text-align: center;
+      font: 500 42px/66px "Archivo", sans-serif; color: #15131C; white-space: nowrap;
+    }
+    #app-status-in { display: inline-block; }
+    #app-callout { left: 112px; top: 682px; width: 720px; height: 128px; overflow: visible; }
+    #app-callout path { fill: none; stroke: #15131C; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------------- touch indicator (dark polarity) ---------------- */
+    .app-touch { position: absolute; left: 0; top: 0; border-radius: 50%; opacity: 0; }
+    .app-touch-core {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(21, 19, 28, 0.22); border: 2px solid rgba(21, 19, 28, 0.45);
+    }
+
+    /* ---------------- fixed header + masked step lines ---------------- */
+    #app-header {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 1080px;
+      height: 390px;
+      z-index: 8;
+      background: #F5F4F8;
+      box-shadow: 0 14px 28px -18px rgba(21, 19, 28, 0.35);
+    }
+    #app-logo { position: absolute; left: 65px; top: 166px; height: 46px; width: auto; display: block; }
+    #app-mask { position: absolute; left: 65px; top: 278px; width: 950px; height: 104px; overflow: hidden; }
+    .app-line {
+      position: absolute;
+      left: 0;
+      top: 0;
+      height: 104px;
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      white-space: nowrap;
+    }
+    .app-chip {
+      font: 600 42px/1 "Martian Mono", monospace;
+      letter-spacing: 0.02em;
+      color: #15131C;
+      background: #FFC83D;
+      border-radius: 14px;
+      padding: 12px 18px 13px;
+    }
+    .app-ltxt { font: 800 84px/104px "Archivo", sans-serif; letter-spacing: -0.025em; color: #15131C; }
+  </style>
+
+  <div id="root" data-composition-id="app" data-width="1080" data-height="1920">
+    <div id="app-stage" class="clip" data-start="0" data-duration="8" data-track-index="0"
+      data-layout-allow-overflow data-layout-allow-overlap data-layout-allow-occlusion>
+
+      <!-- ===== camA: the card column ===== -->
+      <div id="app-camA" class="app-cam">
+        <div id="app-card-01" class="app-card">
+          <h2 class="app-h2"><span class="app-step">01</span> Idea</h2>
+          <span class="app-label">What should this post be about?</span>
+          <div class="app-field app-area"><span id="app-typed-line"><span id="app-typed"></span><span id="app-caret"></span></span></div>
+          <div class="app-row">
+            <span id="app-ghost" class="app-btn app-btn-ghost">Give me an idea</span>
+            <span id="app-write" class="app-btn app-btn-primary"><span id="app-write-a" class="app-btn-label">Write it with AI</span><span id="app-write-b" class="app-btn-label" style="opacity:0">Writing…</span></span>
+          </div>
+        </div>
+
+        <div id="app-card-02" class="app-card">
+          <h2 class="app-h2"><span class="app-step">02</span> Words</h2>
+          <span class="app-label">Who it's for</span>
+          <div class="app-field"><span class="app-w app-w1">Bakeries</span></div>
+          <span class="app-label">Headline</span>
+          <div class="app-field"><span class="app-w app-w2">Fresh</span> <span class="app-w app-w2">bakes.</span> <span class="app-w app-w2">Posted</span> <span class="app-w app-w2">before</span> <span class="app-w app-w2">you</span> <span class="app-w app-w2">open.</span></div>
+          <span class="app-label">Offer line</span>
+          <div id="app-f3" class="app-field"><span class="app-w app-w3">We</span> <span class="app-w app-w3">build</span> <span class="app-w app-w3">you</span> <span class="app-w app-w3">an</span> <span class="app-w app-w3">app</span> <span class="app-w app-w3">that</span> <span class="app-w app-w3">makes</span> <span class="app-w app-w3">and</span> <span class="app-w app-w3">posts</span> <span class="app-w app-w3">a</span> <span class="app-w app-w3">fresh</span> <span class="app-w app-w3">Instagram</span> <span class="app-w app-w3">ad</span> <span class="app-w app-w3">every</span> <span class="app-w app-w3">morning.</span></div>
+        </div>
+
+        <div id="app-card-03" class="app-card">
+          <h2 class="app-h2"><span class="app-step">03</span> Image</h2>
+          <div class="app-field app-area" style="margin-top: 34px; height: 150px"></div>
+          <div class="app-row">
+            <span class="app-btn app-btn-primary" style="width: 420px">Make image with AI</span>
+          </div>
+        </div>
+
+        <div id="app-card-04" class="app-card">
+          <h2 class="app-h2"><span class="app-step">04</span> Preview</h2>
+          <div id="app-canvas" class="app-canvas">
+            <div class="app-pinner">
+              <div class="app-skel" style="left:64px;top:52px;width:225px;height:44px;border-radius:22px"></div>
+              <div class="app-skel" style="left:64px;top:132px;width:870px;height:72px"></div>
+              <div class="app-skel" style="left:64px;top:222px;width:700px;height:72px"></div>
+              <div class="app-band"></div>
+              <div class="app-skel" style="left:64px;top:1100px;width:896px;height:26px"></div>
+              <div class="app-skel" style="left:64px;top:1143px;width:210px;height:26px"></div>
+              <div class="app-skel" style="left:64px;top:1252px;width:235px;height:40px"></div>
+              <div class="app-skel" style="left:599px;top:1242px;width:417px;height:60px;border-radius:30px"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="app-ring-01" class="app-ring"></div>
+        <div id="app-ring-02" class="app-ring"></div>
+        <div id="app-touchA" class="app-touch"><div class="app-touch-core"></div></div>
+      </div>
+
+      <div id="app-colscrim" data-layout-allow-occlusion></div>
+
+      <!-- ===== hero poster ===== -->
+      <div id="app-poster-lift" data-layout-allow-occlusion>
+        <div id="app-poster">
+          <div class="app-pinner">
+            <div id="app-sk-label" class="app-skel" style="left:64px;top:52px;width:225px;height:44px;border-radius:22px"></div>
+            <div id="app-sk-h1" class="app-skel" style="left:64px;top:132px;width:870px;height:72px"></div>
+            <div id="app-sk-h2" class="app-skel" style="left:64px;top:222px;width:700px;height:72px"></div>
+            <div class="app-band"></div>
+            <canvas id="app-ink" width="1080" height="710"></canvas>
+            <div id="app-photo-win"><img src="assets/poster-photo.jpg" alt="Croissants on baking trays" /></div>
+            <div id="app-sk-s1" class="app-skel" style="left:64px;top:1100px;width:896px;height:26px"></div>
+            <div id="app-sk-s2" class="app-skel" style="left:64px;top:1143px;width:210px;height:26px"></div>
+            <div id="app-sk-logo" class="app-skel" style="left:64px;top:1252px;width:235px;height:40px"></div>
+            <div id="app-sk-cta" class="app-skel" style="left:599px;top:1242px;width:417px;height:60px;border-radius:30px"></div>
+
+            <div id="app-p-label" data-layout-ignore>FOR BAKERIES</div>
+            <div id="app-p-head"><span class="app-pw">Fresh</span><span class="app-pw">bakes.</span><span class="app-pw">Posted</span><span class="app-pw">before</span><span class="app-pw">you</span><span class="app-pw">open.</span></div>
+            <div id="app-p-sub" data-layout-ignore>We build you an app that makes and posts a fresh Instagram ad every morning.</div>
+            <img id="app-p-logo" src="assets/awsavya-logo.png" alt="AWSAVYA" />
+            <div id="app-p-cta" data-layout-ignore>TALK TO US · AWSAVYA.IN</div>
+          </div>
+          <div id="app-gloss"></div>
+          <div id="app-dim"></div>
+        </div>
+      </div>
+
+      <!-- ===== camB: the 05 Publish sheet ===== -->
+      <div id="app-camB" class="app-cam">
+        <div id="app-sheet" data-layout-allow-occlusion>
+          <h2 id="app-sh-h2" class="app-h2"><span class="app-step">05</span> Publish</h2>
+          <div id="app-m1" class="app-mode app-on">Schedule</div>
+          <div id="app-m2" class="app-mode">Post now</div>
+          <div id="app-m3" class="app-mode">Add to queue</div>
+          <div id="app-m4" class="app-mode">Buffer draft</div>
+          <span id="app-sh-label" class="app-label">Date and time</span>
+          <div id="app-sh-when" class="app-field">28/11/2026, 08:00 am</div>
+          <div id="app-sh-check">
+            <span class="app-box"><svg viewBox="0 0 34 34"><path d="M8 17.5l6 6L26 11" /></svg></span>
+            <span>Add Instagram's "AI info" label</span>
+          </div>
+          <div id="app-pub">
+            <span id="app-pub-label">Publish</span>
+            <span id="app-check"><svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27" /><path d="M20 33.5l8 8L45 23" /></svg></span>
+          </div>
+          <div id="app-status"><span id="app-status-in">Scheduled for 28 Nov, 8:00 am.</span></div>
+          <svg id="app-callout" viewBox="0 0 720 128"><path id="app-callout-path" /></svg>
+        </div>
+        <div id="app-touchB" class="app-touch"><div class="app-touch-core"></div></div>
+      </div>
+
+      <!-- ===== fixed header ===== -->
+      <div id="app-header" data-layout-allow-occlusion>
+        <img id="app-logo" src="assets/awsavya-logo.png" alt="AWSAVYA" />
+        <div id="app-mask">
+          <div id="app-l1" class="app-line"><span class="app-chip">YOU</span><span class="app-ltxt">type one idea.</span></div>
+          <div id="app-l2" class="app-line"><span class="app-chip">AI</span><span class="app-ltxt">writes the words.</span></div>
+          <div id="app-l3" class="app-line"><span class="app-chip">AI</span><span class="app-ltxt">makes the poster.</span></div>
+          <div id="app-l4" class="app-line"><span class="app-chip">YOU</span><span class="app-ltxt">post or schedule.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var root = document.querySelector('[data-composition-id="app"]');
+      var q = function (s) { return root.querySelector(s); };
+      var qa = function (s) { return Array.prototype.slice.call(root.querySelectorAll(s)); };
+
+      var camA = q("#app-camA"), camB = q("#app-camB");
+      var typedEl = q("#app-typed"), caretEl = q("#app-caret");
+      var ink = q("#app-ink"), ctx = ink.getContext("2d"), photoWin = q("#app-photo-win");
+
+      function clamp01(v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
+      function sineInOut(v) { return -(Math.cos(Math.PI * v) - 1) / 2; }
+      function power2InOut(v) { return v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2; }
+      function power1InOut(v) { return v < 0.5 ? 2 * v * v : 1 - Math.pow(-2 * v + 2, 2) / 2; }
+
+      /* ===== Camera-servo law (from ui-focus-zoom), multi-cue. A state is (s, cx, cy): the world point
+         under the frame centre (540, 960) at scale s. transform = translate(540 - s*cx, 960 - s*cy) scale(s),
+         origin 0 0. Moves interpolate s and the centre point; holds are dead still. ===== */
+      function C(s, tx, ty) { return { s: s, cx: (540 - tx) / s, cy: (960 - ty) / s }; }
+      var A0 = C(1, 0, 0);
+      var A1 = C(1.12, -24, -150);       // textarea + label + both buttons
+      var A2 = C(1.12, -20, -400);   /* kept inside the frame: no right-edge crop */          // "Write it with AI", typed idea still readable above it
+      var A3 = C(1.0, 0, -747);             // 02 Words, h2 just under the header
+      var A3d = C(1.02, -10.8, -778.6);     // 1.00 -> 1.02 drift while the words stream
+      var A4 = C(0.92, 43.2, -2072.8);      // 04 Preview: empty canvas at x 227-853, y 490-1272
+      var movesA = [
+        { t0: 0.0, t1: 0.5, a: A0, b: A1, e: sineInOut },
+        { t0: 1.05, t1: 1.35, a: A1, b: A2, e: sineInOut },
+        { t0: 1.85, t1: 2.25, a: A2, b: A3, e: sineInOut },
+        { t0: 2.25, t1: 3.2, a: A3, b: A3d, e: sineInOut },
+        { t0: 3.2, t1: 3.5, a: A3d, b: A4, e: power2InOut }
+      ];
+      var B0 = C(1, 0, 0);
+      var B1 = C(1.15, -81, -148.5);        // Schedule pill + date
+      var B2 = C(1.15, -81, -470);  /* no left-edge crop */          // Publish
+      var B3 = C(1.12, -65, -430);         // pills row 2 down to the status, status at 52 px
+      var movesB = [
+        { t0: 6.45, t1: 6.85, a: B0, b: B1, e: sineInOut },
+        { t0: 6.88, t1: 7.08, a: B1, b: B2, e: sineInOut },
+        { t0: 7.3, t1: 7.6, a: B2, b: B3, e: sineInOut }
+      ];
+      function camAt(moves, base, t) {
+        var st = base;
+        for (var i = 0; i < moves.length; i += 1) {
+          var m = moves[i];
+          if (t < m.t0) break;
+          if (t >= m.t1) { st = m.b; continue; }
+          var p = m.e((t - m.t0) / (m.t1 - m.t0));
+          var s = m.a.s * Math.pow(m.b.s / m.a.s, p);
+          return { s: s, cx: m.a.cx + (m.b.cx - m.a.cx) * p, cy: m.a.cy + (m.b.cy - m.a.cy) * p };
+        }
+        return st;
+      }
+      function applyCamera(el, st) {
+        el.style.transform = "translate(" + (540 - st.s * st.cx).toFixed(3) + "px," + (960 - st.s * st.cy).toFixed(3) + "px) scale(" + st.s.toFixed(5) + ")";
+      }
+
+      /* ===== typed-prompt rows: chunked human cadence + typo correction (seeded, hand-placed on the VO). ===== */
+      var rows = [
+        [0.0, ""], [0.2, "An"], [0.27, "An ad"], [0.35, "An ad for"], [0.44, "An ad for bak"], [0.51, "An ad for bakery"],
+        [0.59, "An ad for bakery ow"], [0.66, "An ad for bakery owenrs"],
+        [0.84, "An ad for bakery owenr"], [0.88, "An ad for bakery owen"], [0.92, "An ad for bakery owe"], [0.96, "An ad for bakery ow"],
+        [1.02, "An ad for bakery owne"], [1.08, "An ad for bakery owners"]
+      ];
+      function textAt(t) {
+        for (var i = rows.length - 1; i >= 0; i -= 1) if (t >= rows[i][0] - 0.001) return rows[i][1];
+        return "";
+      }
+      var lastTyped = null;
+
+      /* ===== halftone-dissolve grid: computed once, seeded (0x4a17f03d), 18 columns on the 1080x710 band. ===== */
+      var HW = 1080, HH = 710, cell = HW / 18;
+      var cols = Math.ceil(HW / cell) + 2, hrows = Math.ceil(HH / cell) + 1, R_MAX = cell * 0.78;
+      var dots = (function () {
+        var state = 0x4a17f03d;
+        function next() { state = (Math.imul(1664525, state) + 1013904223) >>> 0; return state / 4294967296; }
+        var list = [], maxDist = Math.hypot(HW / 2, HH / 2);
+        for (var r = 0; r < hrows; r += 1) {
+          for (var c = 0; c < cols; c += 1) {
+            var x = (c + (r % 2 === 0 ? 0.25 : 0.75)) * cell, y = (r + 0.5) * cell;
+            var base = Math.hypot(x - HW * 0.5, y - HH * 0.46) / maxDist;
+            var th = Math.max(0, Math.min(1, base + (next() - 0.5) * 0.34));
+            list.push({ x: x, y: y, th: th * 0.62 });
+          }
+        }
+        return list;
+      })();
+      function smooth(v) { return v * v * (3 - 2 * v); }
+      var lastClip = null;
+      function applyClip(v) { if (v !== lastClip) { photoWin.style.clipPath = v; lastClip = v; } }
+      function paintHalftone(p) {
+        ctx.clearRect(0, 0, HW, HH);
+        if (p >= 1) { applyClip("none"); return; }
+        if (p <= 0) { applyClip('path("M 0 0 Z")'); return; }
+        ctx.fillStyle = "#FFC83D";
+        var parts = [];
+        for (var i = 0; i < dots.length; i += 1) {
+          var d = dots[i];
+          var ri = R_MAX * smooth(clamp01((p + 0.08 - d.th) / 0.38));
+          if (ri > 0.25) { ctx.beginPath(); ctx.arc(d.x, d.y, ri, 0, Math.PI * 2); ctx.fill(); }
+          var rw = R_MAX * smooth(clamp01((p - d.th) / 0.38));
+          if (rw > 0.25) {
+            var x0 = (d.x + rw).toFixed(2), xr = rw.toFixed(2), yy = d.y.toFixed(2);
+            parts.push("M " + x0 + " " + yy + " A " + xr + " " + xr + " 0 1 0 " + (d.x - rw).toFixed(2) + " " + yy + " A " + xr + " " + xr + " 0 1 0 " + x0 + " " + yy + " Z");
+          }
+        }
+        applyClip(parts.length ? 'path("' + parts.join(" ") + '")' : 'path("M 0 0 Z")');
+      }
+      var HT_AT = 4.0, HT_DUR = 0.6;
+
+      /* ===== one writer for everything procedural ===== */
+      function render(t) {
+        applyCamera(camA, camAt(movesA, A0, t));
+        applyCamera(camB, camAt(movesB, B0, t));
+        var txt = textAt(t);
+        if (txt !== lastTyped) { typedEl.textContent = txt; lastTyped = txt; }
+        // caret: on while typing, finite blink (integer cycles) during the hold, gone once the AI takes over
+        var caretOn = 0;
+        if (t >= 0.15 && t < 1.55) {
+          caretOn = t < 1.1 ? 1 : (Math.sin((t - 1.1) * Math.PI * 2 / 0.45 + Math.PI / 2) >= 0 ? 1 : 0);
+        }
+        caretEl.style.opacity = caretOn;
+        paintHalftone(power1InOut(clamp01((t - HT_AT) / HT_DUR)));
+      }
+      var clock = { _t: -1 };
+      Object.defineProperty(clock, "t", {
+        get: function () { return this._t; },
+        set: function (v) { this._t = v; render(v); }
+      });
+      render(0);
+
+      var tl = gsap.timeline({ paused: true });
+      tl.fromTo(clock, { t: 0 }, { t: 8, duration: 8, ease: "none" }, 0);
+
+      /* ===== header step lines (line-swap: masked rise, swap on the beat) ===== */
+      var L = ["#app-l1", "#app-l2", "#app-l3", "#app-l4"].map(q);
+      gsap.set(L, { yPercent: 115, opacity: 0 });
+      gsap.set(L[0], { opacity: 1 });
+      // inactive lines are switched off so nothing waits, clipped, above or below the mask
+      tl.set(L[0], { opacity: 0 }, 2.24);
+      tl.set(L[1], { opacity: 1 }, 2.06);
+      tl.set(L[1], { opacity: 0 }, 3.74);
+      tl.set(L[2], { opacity: 1 }, 3.56);
+      tl.set(L[2], { opacity: 0 }, 4.76);
+      tl.set(L[3], { opacity: 1 }, 6.0);
+      tl.fromTo(L[0], { yPercent: 115 }, { yPercent: 0, duration: 0.4, ease: "expo.out" }, 0.0);
+      tl.fromTo(L[0], { yPercent: 0 }, { yPercent: -115, duration: 0.24, ease: "power2.in", immediateRender: false }, 1.98);
+      tl.fromTo(L[1], { yPercent: 115 }, { yPercent: 0, duration: 0.4, ease: "expo.out", immediateRender: false }, 2.06);
+      tl.fromTo(L[1], { yPercent: 0 }, { yPercent: -115, duration: 0.24, ease: "power2.in", immediateRender: false }, 3.48);
+      tl.fromTo(L[2], { yPercent: 115 }, { yPercent: 0, duration: 0.4, ease: "expo.out", immediateRender: false }, 3.56);
+      tl.fromTo(L[2], { yPercent: 0 }, { yPercent: -115, duration: 0.2, ease: "power3.in", immediateRender: false }, 4.55);
+      tl.fromTo(L[3], { yPercent: 115 }, { yPercent: 0, duration: 0.4, ease: "expo.out", immediateRender: false }, 6.0);
+
+      /* ===== S4: idea ===== */
+      tl.fromTo("#app-ring-01", { opacity: 0, scale: 1.03 }, { opacity: 1, scale: 1, duration: 0.2, ease: "expo.out" }, 0.12);
+      tl.to("#app-ring-01", { opacity: 0, duration: 0.15, ease: "power2.in" }, 1.45);
+      // "or pick one": Give me an idea pulses once
+      tl.fromTo("#app-ghost", { scale: 1, borderColor: "#C9C6D2" }, { scale: 1.05, borderColor: "#15131C", duration: 0.14, ease: "power2.out", immediateRender: false }, 0.88);
+      tl.to("#app-ghost", { scale: 1, borderColor: "#C9C6D2", duration: 0.26, ease: "power2.inOut" }, 1.02);
+      // touch-indicator on "Write it with AI" (world 686, 972; size compensates camera 1.45)
+      var TA = 111 / 1.3;
+      gsap.set("#app-touchA", { width: TA, height: TA, x: 686 - TA / 2, y: 972 - TA / 2 });
+      tl.fromTo("#app-touchA", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.06, ease: "power2.out", immediateRender: false }, 1.45);
+      tl.to("#app-touchA", { scale: 0.86, duration: 0.1, ease: "power2.in" }, 1.51);
+      tl.to("#app-touchA", { opacity: 0, scale: 1.05, duration: 0.2, ease: "power1.in" }, 1.62);
+      tl.fromTo("#app-write", { scale: 1 }, { scale: 0.96, duration: 0.08, ease: "power2.in", immediateRender: false }, 1.5);
+      tl.to("#app-write", { scale: 1, duration: 0.2, ease: "power3.out" }, 1.62);
+      // the app's real busy state: button disabled (opacity .45) and labelled "Writing…" (app.js busy())
+      tl.set("#app-write", { opacity: 0.45 }, 1.62);
+      tl.set("#app-write-a", { opacity: 0 }, 1.62);
+      tl.set("#app-write-b", { opacity: 1 }, 1.62);
+
+      /* ===== S5: words (streaming-text) ===== */
+      // the offer field grows to three lines while it is off screen (dive hands over a 110 px field)
+      tl.set("#app-f3", { height: 220 }, 0.6);
+      var GAPS = [0.167, 0.1, 0.0, 0.367, 0.0, 0.167, 0.133, 0.1, 0.1, 0.133, 0.167, 0.133, 0.0, 0.233, 0.167, 0.1, 0.0, 0.133, 0.133, 0.1];
+      function stream(words, start, end) {
+        var raw = [0];
+        for (var i = 1; i < words.length; i += 1) raw.push(raw[i - 1] + GAPS[i % GAPS.length]);
+        var span = raw[raw.length - 1] || 1, k = (end - start) / span;
+        words.forEach(function (w, i) {
+          var at = start + raw[i] * (words.length > 1 ? k : 0);
+          tl.set(w, { opacity: 1 }, at);
+          tl.fromTo(w, { color: "#9A96AA" }, { color: "#15131C", duration: 0.2667, ease: "none", immediateRender: false }, at);
+        });
+      }
+      gsap.set(qa(".app-w"), { opacity: 0, color: "#9A96AA" });
+      stream(qa(".app-w1"), 2.2, 2.2);
+      stream(qa(".app-w2"), 2.36, 2.8);
+      stream(qa(".app-w3"), 2.88, 3.24);
+      // 4 px ink focus ring hops field to field (expo.out snaps)
+      tl.fromTo("#app-ring-02", { opacity: 0, y: 0, height: 126 }, { opacity: 1, duration: 0.12, ease: "power2.out", immediateRender: false }, 2.12);
+      tl.to("#app-ring-02", { y: 219.2, duration: 0.2, ease: "expo.out" }, 2.32);
+      tl.to("#app-ring-02", { y: 438.4, height: 236, duration: 0.2, ease: "expo.out" }, 2.84);
+      tl.to("#app-ring-02", { opacity: 0, duration: 0.12, ease: "power2.in" }, 3.3);
+
+      /* ===== S6: poster (the hero) ===== */
+      var lift = q("#app-poster-lift");
+      // same-rect match: the empty canvas (x 227-853, y 490-1272) becomes the poster layer
+      gsap.set(lift, { transformOrigin: "50% 50%", transformPerspective: 1600, scale: 0.92, y: 66, rotationX: 0 });
+      tl.set(lift, { opacity: 1 }, 3.5);
+      tl.set("#app-canvas", { opacity: 0 }, 3.5);
+      tl.fromTo(lift, { scale: 0.92, y: 66 }, { scale: 1, y: 0, duration: 0.5, ease: "expo.out", immediateRender: false }, 3.5);
+      tl.fromTo(lift, { rotationX: 0 }, { rotationX: 10, duration: 0.13, ease: "power2.out", immediateRender: false }, 3.5);
+      tl.to(lift, { rotationX: 0, duration: 0.37, ease: "sine.inOut" }, 3.63);
+      tl.fromTo("#app-poster",
+        { boxShadow: "0 1px 2px rgba(21,19,28,0.06), 0 2px 4px rgba(21,19,28,0)" },
+        { boxShadow: "0 6px 14px rgba(21,19,28,0.16), 0 40px 80px rgba(21,19,28,0.18)", duration: 0.5, ease: "expo.out", immediateRender: false }, 3.5);
+      tl.fromTo("#app-colscrim", { opacity: 0 }, { opacity: 0.96, duration: 0.45, ease: "power2.out", immediateRender: false }, 3.5);
+      // chip
+      tl.set("#app-sk-label", { opacity: 0 }, 4.6);
+      tl.fromTo("#app-p-label", { opacity: 0, scale: 0.8 }, { opacity: 1, duration: 0.12, ease: "power2.out", immediateRender: false }, 4.6);
+      tl.fromTo("#app-p-label", { scale: 0.8 }, { scale: 1, duration: 0.36, ease: "back.out(1.6)", immediateRender: false }, 4.6);
+      // headline per-word rise
+      tl.to(["#app-sk-h1", "#app-sk-h2"], { opacity: 0, duration: 0.15, ease: "power2.out" }, 4.68);
+      qa(".app-pw").forEach(function (w, i) {
+        tl.fromTo(w, { opacity: 0, y: 54, filter: "blur(8px)" },
+          { opacity: 1, y: 0, filter: "blur(0px)", duration: 0.34, ease: "expo.out", immediateRender: false }, 4.7 + i * 0.08);
+      });
+      // offer line + wordmark set
+      tl.set(["#app-sk-s1", "#app-sk-s2", "#app-sk-logo"], { opacity: 0 }, 5.05);
+      tl.fromTo(["#app-p-sub", "#app-p-logo"], { opacity: 0, filter: "blur(6px)" },
+        { opacity: 1, filter: "blur(0px)", duration: 0.2, ease: "power4.out", immediateRender: false }, 5.05);
+      // CTA button pop
+      tl.set("#app-sk-cta", { opacity: 0 }, 5.2);
+      tl.fromTo("#app-p-cta", { opacity: 0, scale: 0.8 }, { opacity: 1, duration: 0.12, ease: "power2.out", immediateRender: false }, 5.2);
+      tl.fromTo("#app-p-cta", { scale: 0.8 }, { scale: 1, duration: 0.36, ease: "back.out(1.6)", immediateRender: false }, 5.2);
+      // gloss-sweep: restrained landing + one diagonal pass, then dead still from 5.70
+      gsap.set("#app-poster", { transformOrigin: "50% 50%" });
+      tl.fromTo("#app-poster", { scale: 1 }, { scale: 1.04, duration: 0.07, ease: "power2.out", immediateRender: false }, 5.3);
+      tl.to("#app-poster", { scale: 1, duration: 0.33, ease: "expo.out" }, 5.37);
+      tl.set("#app-gloss", { opacity: 1, "--app-sweep": -30 }, 5.35);
+      tl.fromTo("#app-gloss", { "--app-sweep": -30 }, { "--app-sweep": 130, duration: 0.35, ease: "power2.out", immediateRender: false }, 5.35);
+      tl.set("#app-gloss", { opacity: 0 }, 5.7);
+
+      /* ===== S7: publish ===== */
+      // poster recedes to everyday's front-card rect (x 260-820, y 530-1230) and dims
+      tl.to(lift, { scale: 560 / 680, y: 65, duration: 0.55, ease: "expo.out" }, 6.0);
+      tl.fromTo("#app-dim", { opacity: 0 }, { opacity: 0.35, duration: 0.4, ease: "power2.out", immediateRender: false }, 6.0);
+      // sheet-spring-up: the sampled spring, verbatim
+      var SPRING = [
+        [0.0, 1450, 0.0], [0.057, 1198, 0.13], [0.09, 903, 0.21], [0.123, 648, 0.36], [0.157, 437, 0.43],
+        [0.19, 262, 0.5], [0.223, 120, 0.62], [0.257, 8, 0.78], [0.29, -76, 0.89], [0.323, -138, 1.0],
+        [0.357, -175, null], [0.39, -191, null], [0.423, -192, null], [0.457, -181, null], [0.49, -159, null],
+        [0.523, -131, null], [0.557, -100, null], [0.59, -68, null], [0.623, -41, null], [0.657, -18, null],
+        [0.69, -5, null], [0.723, 0, null]
+      ];
+      // y verbatim; the opacity column is dropped because the sheet slides over the receding poster
+      // and a see-through sheet ghosts it (it starts below the frame, so it never pops in)
+      gsap.set("#app-sheet", { y: 1450, opacity: 0 });
+      tl.set("#app-sheet", { opacity: 1 }, 6.0);
+      SPRING.forEach(function (s) { tl.set("#app-sheet", { y: s[1] }, 6.0 + s[0]); });
+      // tap Publish (inside camB; size compensates camera 1.3)
+      var TB = 111 / 1.3;
+      gsap.set("#app-touchB", { width: TB, height: TB, x: 640 - TB / 2, y: 1120 - TB / 2 });
+      tl.fromTo("#app-touchB", { opacity: 0, scale: 0.9 }, { opacity: 1, scale: 1, duration: 0.06, ease: "power2.out", immediateRender: false }, 7.0);
+      tl.to("#app-touchB", { scale: 0.86, duration: 0.1, ease: "power2.in" }, 7.06);
+      tl.to("#app-touchB", { opacity: 0, scale: 1.05, duration: 0.2, ease: "power1.in" }, 7.17);
+      gsap.set("#app-pub", { transformOrigin: "50% 50%" });
+      tl.fromTo("#app-pub", { scale: 1 }, { scale: 0.96, duration: 0.08, ease: "power2.in", immediateRender: false }, 7.05);
+      tl.to("#app-pub", { scale: 1, duration: 0.22, ease: "power3.out" }, 7.15);
+      tl.to("#app-pub-label", { opacity: 0, scale: 0.9, duration: 0.1, ease: "power2.in" }, 7.12);
+      // success-check: ring pop + tick draw
+      tl.fromTo("#app-check svg",
+        { opacity: 0, "--app-ck-scale": 0.72, "--app-ck-rot": "-18deg", "--app-ck-blur": "7px" },
+        { opacity: 1, "--app-ck-scale": 1, "--app-ck-rot": "0deg", "--app-ck-blur": "0px", duration: 0.34, ease: "back.out(1.8)", immediateRender: false }, 7.15);
+      tl.fromTo("#app-check path", { "--app-ck-dash": 36 }, { "--app-ck-dash": 0, duration: 0.3, ease: "power2.out", immediateRender: false }, 7.27);
+      // the exact status rises
+      gsap.set("#app-status-in", { yPercent: 110 });
+      tl.fromTo("#app-status-in", { yPercent: 110 }, { yPercent: 0, duration: 0.45, ease: "expo.out", immediateRender: false }, 7.3);
+      // hw-callout-circle: wobbled ink ellipse, no label
+      function hwHash(n, seed) { var x = Math.sin(n * 127.1 + (seed || 1) * 311.7) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; }
+      function hwWobbleEllipse(cx, cy, rx, ry, seed, wobblePct) {
+        var N = 14, pts = [];
+        for (var i = 0; i < N; i++) {
+          var a = (i / N) * Math.PI * 2 - Math.PI * 0.92;
+          var wr = 1 + hwHash(i * 13 + 5, seed) * (wobblePct / 100);
+          pts.push([cx + Math.cos(a) * rx * wr, cy + Math.sin(a) * ry * wr]);
+        }
+        var d = "M" + ((pts[0][0] + pts[N - 1][0]) / 2).toFixed(1) + " " + ((pts[0][1] + pts[N - 1][1]) / 2).toFixed(1);
+        for (var j = 0; j < N; j++) {
+          var p = pts[j], r = pts[(j + 1) % N];
+          d += " Q" + p[0].toFixed(1) + " " + p[1].toFixed(1) + " " + ((p[0] + r[0]) / 2).toFixed(1) + " " + ((p[1] + r[1]) / 2).toFixed(1);
+        }
+        // overshoot the closing point a little, like a marker that doesn't stop exactly
+        var p0 = pts[0], p1 = pts[1];
+        d += " Q" + p0[0].toFixed(1) + " " + (p0[1] - 6).toFixed(1) + " " + ((p0[0] + p1[0]) / 2 + 18).toFixed(1) + " " + ((p0[1] + p1[1]) / 2 - 8).toFixed(1);
+        return d;
+      }
+      var co = q("#app-callout-path");
+      co.setAttribute("d", hwWobbleEllipse(360, 64, 350, 45, 3, 4));
+      var coLen = co.getTotalLength();
+      co.setAttribute("stroke-dasharray", coLen.toFixed(1) + " " + coLen.toFixed(1));
+      gsap.set(co, { strokeDashoffset: coLen, opacity: 0 });
+      tl.set(co, { opacity: 1 }, 7.535);
+      tl.fromTo(co, { strokeDashoffset: coLen }, { strokeDashoffset: 0, duration: 0.35, ease: "power2.inOut", immediateRender: false }, 7.5);
+
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["app"] = tl;
+    })();
+  </script>
+</template>

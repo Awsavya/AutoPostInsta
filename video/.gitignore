@@ -1,0 +1,32 @@
+# Rendered reels: big, and rebuilt from the projects with `render`
+/*.mp4
+**/out/
+
+# HyperFrames caches and render artifacts
+**/.hyperframes/
+**/.thumbnails/
+**/.waveform-cache/
+**/.transcode-cache/
+
+# Installed dependencies, local voice model and its Python environment
+**/node_modules/
+painted-ad/.tts/
+painted-ad/tts-models/
+
+# Generated audio (rebuilt by make_audio.py) and voice experiments
+**/assets/soundtrack.wav
+**/assets/audio/soundtrack.wav
+**/assets/audio/*-t.wav
+painted-ad/assets/vo-test/
+painted-ad/assets/auditions/
+painted-ad/assets/pronounce/*.wav
+
+# Scratch outputs from checks and research runs
+/*.json
+!/final-plan.json
+/*.jpg
+/*.png
+/add-v3.*
+**/week-preview.jpg
+**/assets/audio/music.wav
+**/assets/audio/sfx.wav

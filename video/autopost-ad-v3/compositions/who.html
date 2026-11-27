@@ -1,0 +1,111 @@
+<template>
+  <!--
+    who (S2, abs 2.0-3.5): the painted Riya plate (assets/riya-cut.mp4, made with painted-ad/src/scenes/riyacut.js)
+    with a printed paper strip carrying "For your [bakery. / salon. / clinic. / coaching centre.]".
+
+    Presets wired here (copied in, ids prefixed who-):
+      - cut-the-curve, incoming half only: the plate and the strip arrive from below at peak speed and decelerate
+        (power4.out). Seam state matches the preset: opacity .72, blur capped at 8 px. Entry distance follows the
+        preset's "up" vector (26cqh out over 0.2 s) scaled by the 0.25 s entry: 624 px. The strip travels 1.15x
+        as far (it sits nearer the camera), so the two layers separate in depth as they land.
+      - kinetic-type-swap: one masked grid slot holds every option, so it takes the widest word's width and the
+        sentence never reflows. IN_BASE cut to 0 (the sentence rides in fully set), swaps on mount-relative cues
+        0.40 / 0.75 / 1.05, outgoing whips past the mask on power4.in, incoming rolls up on expo.out over 0.28 s.
+        The accent variable is ignored: the slot is a filled yellow block with ink words. No hold pulse.
+      - 2% punch-in on each swap, decaying over 5 frames, on the camera wrapper.
+    Hard cut out at 1.5 (the root's next scene starts on the 3.5 beat).
+  -->
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    #root { position: absolute; inset: 0; overflow: hidden; background: #EACAA4; }
+    #who-ride, #who-cam { position: absolute; inset: 0; will-change: transform, filter, opacity; }
+    #who-cam { transform-origin: 540px 640px; }
+    /* painted wall tone that extends above the plate, so the entry never shows an empty band */
+    #who-wall { position: absolute; left: 0; top: -760px; width: 1080px; height: 2680px; background: #EACAA4; }
+    #who-plate { position: absolute; left: 0; top: 0; width: 1080px; height: 1920px; object-fit: contain; }
+    #who-strip-clip { position: absolute; inset: 0; pointer-events: none; }
+    #who-strip {
+      position: absolute; left: 65px; top: 282px; width: 950px;
+      padding: 22px 40px 26px 40px;
+      background: #F5F4F8;
+      border: 1px solid rgba(21, 19, 28, .10);
+      border-radius: 6px;
+      box-shadow: 0 24px 48px rgba(21, 19, 28, .22), 0 3px 6px rgba(21, 19, 28, .10);
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+    #who-for {
+      font-family: "Archivo", sans-serif; font-weight: 800; font-size: 110px; line-height: 1;
+      letter-spacing: -0.025em; color: #15131C; white-space: nowrap;
+    }
+    #who-slot {
+      display: inline-grid; margin-top: 16px; padding: 12px 28px 16px 26px;
+      background: #FFC83D; border-radius: 10px; overflow: hidden;
+      font-family: "Archivo", sans-serif; font-weight: 800; font-size: 84px; line-height: 1.04;
+      letter-spacing: -0.025em; color: #15131C;
+    }
+    .who-word { grid-area: 1 / 1; width: max-content; justify-self: start; white-space: nowrap; will-change: transform; opacity: 0; }
+    #who-word-0 { opacity: 1; }
+  </style>
+
+  <div id="root" data-composition-id="who" data-width="1080" data-height="1920">
+    <div id="who-ride">
+      <div id="who-cam">
+        <div id="who-wall" data-layout-ignore></div>
+        <video id="who-plate" class="clip" data-start="0" data-duration="1.5" data-track-index="0"
+          src="assets/riya-cut.mp4" muted playsinline></video>
+        <div id="who-strip-clip" class="clip" data-start="0" data-duration="1.5" data-track-index="1">
+          <div id="who-strip" role="img" aria-label="For your coaching centre.">
+            <div id="who-for">For your</div>
+            <div id="who-slot" aria-hidden="true" data-layout-allow-overflow>
+              <span class="who-word" id="who-word-0">bakery.</span>
+              <span class="who-word" id="who-word-1">salon.</span>
+              <span class="who-word" id="who-word-2">clinic.</span>
+              <span class="who-word" id="who-word-3">coaching centre.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var tl = gsap.timeline({ paused: true });
+
+      // ---- cut-the-curve, incoming half ----
+      var ENTRY = 0.25, PLATE_IN = 624, STRIP_EXTRA = 94;   // strip travels 1.15x the plate
+      tl.fromTo("#who-ride",
+        { y: PLATE_IN, opacity: 0.72, filter: "blur(8px)" },
+        { y: 0, opacity: 1, filter: "blur(0px)", duration: ENTRY, ease: "power4.out" }, 0);
+      tl.fromTo("#who-strip",
+        { y: STRIP_EXTRA, rotation: -3.2 },
+        { y: 0, rotation: -1.5, duration: 0.32, ease: "expo.out" }, 0);
+
+      // ---- kinetic-type-swap (edited): masked slot roll on fixed cues ----
+      var words = ["#who-word-0", "#who-word-1", "#who-word-2", "#who-word-3"];
+      // OUT finishes before the incoming word crosses the mask edge, so a frame never shows two half words
+      var CUES = [0.40, 0.75, 1.05], ROLL = 0.28, OUT = 0.12, IN_DELAY = 0.10;
+      // parked words sit past the mask and stay transparent, as in the preset (one legible word per frame);
+      // set outside the timeline too, so the very first seek (local 0) already shows only "bakery."
+      gsap.set(words.slice(1), { yPercent: 112, opacity: 0 });
+      tl.set(words.slice(1), { yPercent: 112, opacity: 0 }, 0);
+      tl.set(words[0], { yPercent: 0, opacity: 1 }, 0);
+      CUES.forEach(function (c, i) {
+        tl.fromTo(words[i], { yPercent: 0 }, { yPercent: -112, duration: OUT, ease: "power4.in", immediateRender: false }, c);
+        tl.set(words[i], { opacity: 0 }, c + OUT);
+        tl.set(words[i + 1], { opacity: 1 }, c + IN_DELAY);
+        tl.fromTo(words[i + 1], { yPercent: 112 }, { yPercent: 0, duration: ROLL, ease: "expo.out", immediateRender: false }, c + IN_DELAY);
+        // 2% punch-in as the new word lands, decaying over 5 frames
+        tl.fromTo("#who-cam", { scale: 1.02 }, { scale: 1, duration: 5 / 30, ease: "power2.out", immediateRender: false }, c + IN_DELAY);
+      });
+      tl.set("#who-cam", { scale: 1 }, 0);
+
+      // hold to the hard cut on the 3.5 beat
+      tl.to({}, { duration: 0.001 }, 1.499);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["who"] = tl;
+    })();
+  </script>
+</template>

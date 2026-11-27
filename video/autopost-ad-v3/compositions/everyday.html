@@ -1,0 +1,401 @@
+<template>
+  <!--
+    S8 "EVERY DAY" (abs 13.0-15.0, local 0-2.0).
+    Full-bleed signal yellow. A stack of four example posters (hero, loaves, cake, cinnamon rolls; never day-6)
+    throws back-to-front three times. Each thrown card swings out beside the stack, comes over it at the apex
+    and lands as the date strip settles on the next day (SAT 28 NOV -> TUE 01 DEC, "8:00 AM" fixed). A paper
+    chip labels it "EXAMPLE WEEK". Everything is at rest by 0.96; at 1.0 "Every day." slams over the stack's
+    header band (one punch for stack + headline), and the strip, chip and headline whip up into the 2.0 cut.
+
+    Presets, copied in and re-authored for this scene (shared component files untouched):
+      - spring-stack-shuffle: its segment compiler (cutAt / redirect / hermite / landEase), cues 0.08/0.38/0.68,
+        sideways throw, z swap at the apex, rotation track, header-band paper scrim instead of an accent ring.
+      - split-flap-board: one-row date strip, ink cells, paper Martian Mono 46 px, one direct 0.085 s flip per cell.
+      - headline-slam: 1.6 -> 1.0 expo.out on the impact frame, power4.in whip-up exit.
+      - camera-shake: a 2.5% closed-form decaying punch shared by the stack and the headline.
+
+    Front card rest rect (S7 -> S8 same-rect match cut): x 260-820, y 530-1230 (560 x 700), at rest on frame 0.
+    Week cards use everyday-day-N-clean.jpg (chip, headline, photo; no AWSAVYA offer/CTA row).
+  -->
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+
+    #root { position: absolute; inset: 0; overflow: hidden; background: #FFC83D; color: #15131C; font-family: "Archivo", sans-serif; }
+    #everyday-root *, #everyday-root *::before, #everyday-root *::after { box-sizing: border-box; }
+
+    /* Field: all signal yellow, lit like paper under a lamp so it is not a flat swatch. */
+    #everyday-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(70% 48% at 52% 44%, rgba(255, 236, 170, 0.55) 0%, rgba(255, 200, 61, 0) 70%),
+        radial-gradient(140% 90% at 50% 50%, rgba(255, 200, 61, 0) 55%, rgba(196, 128, 0, 0.22) 100%),
+        #FFC83D;
+    }
+
+    /* Explicit stacking: the world is its own context (z 0), the slam always sits above it (z 10). */
+    #everyday-world { position: absolute; inset: 0; z-index: 0; isolation: isolate; }
+    #everyday-cam { position: absolute; inset: 0; z-index: 1; }
+    #everyday-rig { position: absolute; inset: 0; transform-origin: 540px 1000px; }
+    #everyday-floor {
+      position: absolute; left: 190px; top: 1150px; width: 700px; height: 150px; border-radius: 50%;
+      background: radial-gradient(closest-side, rgba(120, 72, 0, 0.30), rgba(120, 72, 0, 0));
+    }
+
+    /* ---- stack (spring-stack-shuffle, re-authored) ---- */
+    #everyday-stage { position: absolute; inset: 0; isolation: isolate; transform-origin: 540px 880px; }
+    .everyday-card {
+      position: absolute; left: 260px; top: 530px; width: 560px; height: 700px;
+      border-radius: 14px; background: #F5F4F8; overflow: hidden; transform-origin: 50% 50%;
+      box-shadow: 0 6px 14px rgba(21, 19, 28, 0.16), 0 40px 80px rgba(21, 19, 28, 0.18);
+    }
+    .everyday-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .everyday-veil, .everyday-scrim { position: absolute; inset: 0; pointer-events: none; opacity: 0; }
+    .everyday-veil { background: #15131C; }
+    /* After the slam: the poster header band (top 26%, where each poster headline sits) goes to paper so
+       no poster headline competes with "Every day."; the photos stay almost clean. */
+    .everyday-scrim {
+      background: linear-gradient(180deg,
+        rgba(245, 244, 248, 0.97) 0%, rgba(245, 244, 248, 0.97) 25%,
+        rgba(245, 244, 248, 0.14) 31%, rgba(245, 244, 248, 0.14) 100%);
+    }
+
+    /* ---- labels: date strip + chip (they whip out with the headline) ---- */
+    #everyday-labels { position: absolute; inset: 0; z-index: 5; }
+    #everyday-strip { position: absolute; left: 65px; top: 285px; height: 80px; display: flex; align-items: center; gap: 22px; }
+    .everyday-group { display: flex; gap: 5px; }
+    .everyday-sep { width: 12px; height: 12px; border-radius: 50%; background: #15131C; }
+    .everyday-cell {
+      position: relative; width: 52px; height: 80px; perspective: 600px; border-radius: 8px; background: #15131C;
+      box-shadow: 0 10px 22px rgba(21, 19, 28, 0.28), 0 2px 4px rgba(21, 19, 28, 0.3);
+    }
+    .everyday-face { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; background: linear-gradient(180deg, #272431 0%, #1B1922 100%); }
+    .everyday-top, .everyday-leaf-a { top: 0; border-radius: 8px 8px 0 0; }
+    .everyday-bot, .everyday-leaf-b { top: 50%; border-radius: 0 0 8px 8px; background: linear-gradient(180deg, #17151D 0%, #221F2A 100%); }
+    .everyday-leaf-a { transform-origin: 50% 100%; z-index: 3; backface-visibility: hidden; opacity: 0; }
+    .everyday-leaf-b { transform-origin: 50% 0%; z-index: 3; backface-visibility: hidden; opacity: 0; }
+    .everyday-glyph {
+      position: absolute; left: 0; width: 100%; height: 80px; line-height: 80px; text-align: center;
+      font-family: "Martian Mono", monospace; font-weight: 600; font-size: 46px; color: #F5F4F8; white-space: pre;
+    }
+    .everyday-bot .everyday-glyph, .everyday-leaf-b .everyday-glyph { top: -40px; }
+    .everyday-top .everyday-glyph, .everyday-leaf-a .everyday-glyph { top: 0; }
+    .everyday-seam { position: absolute; left: 0; top: 50%; width: 100%; height: 2px; margin-top: -1px; background: #07060A; z-index: 4; }
+
+    #everyday-chip-wrap { position: absolute; left: 65px; top: 393px; }
+    #everyday-chip {
+      display: inline-block; padding: 14px 26px 12px; border-radius: 999px; background: #F5F4F8; color: #15131C;
+      font-family: "Martian Mono", monospace; font-weight: 600; font-size: 42px; line-height: 1; letter-spacing: 0.02em;
+      transform-origin: 0% 50%;
+      box-shadow: 0 12px 26px rgba(21, 19, 28, 0.20), 0 2px 4px rgba(21, 19, 28, 0.18);
+    }
+
+    /* ---- "Every day." slam (headline-slam, re-authored) ---- */
+    #everyday-slam { position: absolute; inset: 0; z-index: 10; }
+    #everyday-slam-stage { position: absolute; inset: 0; transform-origin: 540px 660px; }
+    #everyday-headline {
+      position: absolute; left: 65px; top: 560px; height: 200px; margin: 0; display: flex; align-items: center;
+      white-space: nowrap; font-family: "Archivo", sans-serif; font-weight: 800; font-size: 170px; line-height: 1;
+      letter-spacing: -0.025em; color: #15131C; transform-origin: 30% 50%;
+    }
+    #everyday-headline .everyday-every { display: inline-block; }
+    #everyday-headline .everyday-day {
+      display: inline-block; margin-left: 0.2em; padding: 0.04em 0.13em 0.12em 0.1em; border-radius: 14px;
+      background: #15131C; color: #F5F4F8; box-shadow: 0 24px 48px rgba(21, 19, 28, 0.28);
+    }
+  </style>
+
+  <div id="root" data-composition-id="everyday" data-width="1080" data-height="1920">
+    <div id="everyday-root">
+      <div id="everyday-bg" class="clip" data-start="0" data-duration="2" data-track-index="0"></div>
+
+      <div id="everyday-world" class="clip" data-start="0" data-duration="2" data-track-index="1" data-layout-allow-overflow>
+        <div id="everyday-cam" data-layout-allow-overflow>
+          <div id="everyday-rig" data-layout-allow-overflow>
+            <div id="everyday-floor" data-layout-ignore></div>
+            <div id="everyday-stage" data-layout-allow-overflow data-layout-allow-overlap data-layout-allow-occlusion>
+              <section id="everyday-card-1" class="everyday-card" aria-label="Example poster: Fresh bakes">
+                <img src="assets/everyday-day-1.jpg" alt="Example poster: Fresh bakes. Posted before you open." />
+                <div class="everyday-veil"></div><div class="everyday-scrim"></div>
+              </section>
+              <section id="everyday-card-2" class="everyday-card" aria-label="Example poster: Warm loaves">
+                <img src="assets/everyday-day-2-clean.jpg" alt="Example poster: Warm loaves, ready by noon." />
+                <div class="everyday-veil"></div><div class="everyday-scrim"></div>
+              </section>
+              <section id="everyday-card-3" class="everyday-card" aria-label="Example poster: Cake of the day">
+                <img src="assets/everyday-day-3-clean.jpg" alt="Example poster: Cake of the day is out." />
+                <div class="everyday-veil"></div><div class="everyday-scrim"></div>
+              </section>
+              <section id="everyday-card-4" class="everyday-card" aria-label="Example poster: Cinnamon rolls">
+                <img src="assets/everyday-day-5-clean.jpg" alt="Example poster: Cinnamon rolls, still warm." />
+                <div class="everyday-veil"></div><div class="everyday-scrim"></div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div id="everyday-labels" data-layout-allow-overflow>
+          <div id="everyday-strip" data-layout-allow-safe-zone aria-label="SAT 28 NOV, 8:00 AM" data-layout-allow-overflow>
+            <div class="everyday-group" data-flap="SAT"></div>
+            <div class="everyday-group" data-flap="28"></div>
+            <div class="everyday-group" data-flap="NOV"></div>
+            <div class="everyday-sep"></div>
+            <div class="everyday-group" data-flap="8:00"></div>
+            <div class="everyday-group" data-flap="AM"></div>
+          </div>
+          <div id="everyday-chip-wrap">
+            <div id="everyday-chip" data-layout-allow-safe-zone>EXAMPLE WEEK</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="everyday-slam" class="clip" data-start="1" data-duration="1" data-track-index="2" data-layout-allow-overflow>
+        <div id="everyday-slam-stage" data-layout-allow-overflow>
+          <h2 id="everyday-headline" data-layout-allow-safe-zone aria-label="Every day." data-layout-allow-overlap><span class="everyday-every">Every</span><span class="everyday-day">day.</span></h2>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var tl = gsap.timeline({ paused: true });
+      var W = 1080, SLAM = 1.0;
+
+      /* =========================== STACK (spring-stack-shuffle) =========================== */
+      // Each card lands as its date settles; the last one lands at 0.96, before the 1.0 slam.
+      var CUES = [0.08, 0.38, 0.68];
+      var STEP_Y = -34, STEP_S = 0.045;
+      var ROT = [0, -2.6, 2.1, -1.4];
+      var THROW = 0.28, RISE = 0.11, LAND = THROW - RISE, SHIFT = 0.28;
+      var KICK_X = 0.2 * W;           // sideways swing: beside the stack, never up into the label band
+      var APEX_Y = -10, APEX_S = 1.04, SPIN = 4.5;  // apex top corner stays at y >= 480 (chip bottom is 460)
+      var BUMP_Y = 19;
+      var cardEls = [1, 2, 3, 4].map(function (n) { return document.getElementById("everyday-card-" + n); });
+
+      function poseFor(depth) {
+        return { y: depth * STEP_Y, s: 1 - depth * STEP_S, r: ROT[depth], veil: Math.min(0.3, depth * 0.1) };
+      }
+      function easeFn(e) { return typeof e === "function" ? e : gsap.parseEase(e); }
+      function makeTrack(el, initial) { return { el: el, initial: initial, segs: [] }; }
+      function endValue(tr) { return tr.segs.length ? tr.segs[tr.segs.length - 1].to : tr.initial; }
+      function cutAt(tr, time) {
+        var segs = tr.segs;
+        while (segs.length && segs[segs.length - 1].t0 >= time) segs.pop();
+        if (!segs.length) return { value: tr.initial, velocity: 0 };
+        var last = segs[segs.length - 1];
+        if (last.t1 <= time) return { value: last.to, velocity: 0 };
+        var curve = easeFn(last.ease), span = last.t1 - last.t0, f = (time - last.t0) / span;
+        var lo = Math.max(0, f - 0.001), hi = Math.min(1, f + 0.001);
+        var slope = (curve(hi) - curve(lo)) / (hi - lo), progress = curve(f);
+        var value = last.from + (last.to - last.from) * progress;
+        var velocity = ((last.to - last.from) * slope) / span;
+        last.t1 = time; last.to = value;
+        if (progress > 1e-6) last.ease = (function (c, cf, cp) { return function (u) { return c(u * cf) / cp; }; })(curve, f, progress);
+        return { value: value, velocity: velocity };
+      }
+      function hermite(m0) {
+        var m = Math.max(-4, Math.min(4, m0));
+        return function (u) { return u * u * u * (m - 2) + u * u * (3 - 2 * m) + m * u; };
+      }
+      var smooth = hermite(0);
+      function landEase(o) {
+        return function (u) {
+          if (u < 0.62) { var a = u / 0.62; return (1 + o) * a * a * (3 - 2 * a); }
+          var b = (u - 0.62) / 0.38; return 1 + o - o * b * b * (3 - 2 * b);
+        };
+      }
+      function addSeg(tr, t0, dur, to, ease) { tr.segs.push({ t0: t0, t1: t0 + dur, from: endValue(tr), to: to, ease: ease }); }
+      function redirect(tr, time, dur, to) {
+        var cut = cutAt(tr, time), delta = to - cut.value;
+        var ease = Math.abs(delta) < 1e-4 ? smooth : hermite((cut.velocity * dur) / delta);
+        tr.segs.push({ t0: time, t1: time + dur, from: cut.value, to: to, ease: ease });
+      }
+
+      // Frame 0: the whole stack at rest, the hero on top at its exact rest rect (match cut from S7).
+      var cards = cardEls.map(function (el, i) {
+        var p = poseFor(i);
+        return {
+          el: el, depth: i,
+          x: makeTrack(el, 0), y: makeTrack(el, p.y), s: makeTrack(el, p.s), r: makeTrack(el, p.r),
+          veil: makeTrack(el.querySelector(".everyday-veil"), p.veil)
+        };
+      });
+      var zEvents = [];
+      cards.forEach(function (c, i) { zEvents.push({ t: 0, el: c.el, z: 40 - i }); });
+
+      CUES.forEach(function (cue, k) {
+        var back = cards.reduce(function (a, b) { return b.depth > a.depth ? b : a; });
+        cards.forEach(function (c) { c.depth = c === back ? 0 : c.depth + 1; });
+        var side = k % 2 === 0 ? 1 : -1;
+        cards.forEach(function (c) {
+          var p = poseFor(c.depth);
+          if (c === back) {
+            // Swings out beside the stack (still behind it), crosses over at the apex, lands in front.
+            zEvents.push({ t: cue, el: c.el, z: 30 });
+            zEvents.push({ t: cue + RISE, el: c.el, z: 60 });
+            zEvents.push({ t: cue + THROW, el: c.el, z: 40 });
+            redirect(c.x, cue, RISE, side * KICK_X);
+            addSeg(c.x, cue + RISE, LAND, 0, smooth);
+            redirect(c.y, cue, RISE, APEX_Y);
+            addSeg(c.y, cue + RISE, LAND, p.y, landEase(0.05));
+            redirect(c.s, cue, RISE, APEX_S);
+            addSeg(c.s, cue + RISE, LAND, p.s, landEase(0.03));
+            redirect(c.r, cue, RISE, side * SPIN);
+            addSeg(c.r, cue + RISE, LAND, p.r, landEase(0.15));
+            redirect(c.veil, cue, RISE, 0);
+          } else {
+            zEvents.push({ t: cue, el: c.el, z: 40 - c.depth });
+            redirect(c.x, cue, SHIFT, 0);
+            redirect(c.y, cue, SHIFT, p.y);
+            redirect(c.s, cue, SHIFT, p.s);
+            redirect(c.r, cue, SHIFT, p.r);
+            redirect(c.veil, cue, SHIFT, p.veil);
+            if (k < CUES.length - 1) {     // landing bump; the last landing's reaction is the slam itself
+              var rest = endValue(c.y);
+              addSeg(c.y, cue + SHIFT, 0.08, rest + BUMP_Y, smooth);
+              addSeg(c.y, cue + SHIFT + 0.08, 0.12, rest, smooth);
+            }
+          }
+        });
+      });
+
+      var propFor = {
+        x: function (v) { return { x: v }; }, y: function (v) { return { y: v }; },
+        s: function (v) { return { scale: v }; }, r: function (v) { return { rotation: v }; },
+        veil: function (v) { return { opacity: v }; }
+      };
+      cards.forEach(function (c) {
+        ["x", "y", "s", "r", "veil"].forEach(function (prop) {
+          var tr = c[prop], P = propFor[prop];
+          gsap.set(tr.el, P(tr.initial));
+          tr.segs.forEach(function (seg) {
+            var to = P(seg.to); to.duration = seg.t1 - seg.t0; to.ease = easeFn(seg.ease); to.immediateRender = false;
+            tl.fromTo(tr.el, P(seg.from), to, seg.t0);
+          });
+        });
+      });
+      zEvents.forEach(function (e) { if (e.t === 0) gsap.set(e.el, { zIndex: e.z }); tl.set(e.el, { zIndex: e.z }, e.t); });
+
+      /* =========================== DATE STRIP (split-flap-board) =========================== */
+      // One direct flip per changed cell, all cells within one frame, settling on the card's landing.
+      var FLIP = 0.085, CELL_STAGGER = 0.004, SETTLE_LEAD = 0.11;
+      var DATES = [["SAT", "28", "NOV"], ["SUN", "29", "NOV"], ["MON", "30", "NOV"], ["TUE", "01", "DEC"]];
+      var flapCells = [];
+      Array.prototype.slice.call(document.querySelectorAll("#everyday-strip .everyday-group")).forEach(function (g, gi) {
+        var txt = g.getAttribute("data-flap");
+        for (var ci = 0; ci < txt.length; ci++) {
+          var cell = document.createElement("div");
+          cell.className = "everyday-cell";
+          var faces = ["everyday-top", "everyday-bot", "everyday-leaf-a", "everyday-leaf-b"].map(function (cls) {
+            var f = document.createElement("div");
+            f.className = "everyday-face " + cls;
+            f.setAttribute("data-layout-ignore", "");
+            var s = document.createElement("span");
+            s.className = "everyday-glyph";
+            f.appendChild(s);
+            cell.appendChild(f);
+            return f;
+          });
+          var seam = document.createElement("div");
+          seam.className = "everyday-seam";
+          seam.setAttribute("data-layout-ignore", "");
+          cell.appendChild(seam);
+          g.appendChild(cell);
+          flapCells.push({
+            group: gi, idx: ci, initial: txt.charAt(ci), flips: [],
+            top: faces[0].firstChild, bot: faces[1].firstChild,
+            leafA: faces[2], leafB: faces[3], glyphA: faces[2].firstChild, glyphB: faces[3].firstChild
+          });
+        }
+      });
+      for (var k = 1; k < DATES.length; k++) {
+        var start = CUES[k - 1] + THROW - SETTLE_LEAD, j = 0;
+        flapCells.forEach(function (c) {
+          if (c.group > 2) return;
+          var from = DATES[k - 1][c.group].charAt(c.idx), to = DATES[k][c.group].charAt(c.idx);
+          if (from === to) return;
+          c.flips.push({ t0: start + j * CELL_STAGGER, from: from, to: to });
+          j++;
+        });
+      }
+      var DEG = Math.PI / 180;
+      function clearLeaf(leaf, glyph) { leaf.style.opacity = "0"; leaf.style.transform = ""; leaf.style.filter = ""; glyph.textContent = ""; }
+      function showLeaf(leaf, glyph, ch, angle, shade) {
+        glyph.textContent = ch; leaf.style.opacity = "1";
+        leaf.style.transform = "rotateX(" + angle.toFixed(2) + "deg)";
+        leaf.style.filter = "brightness(" + shade + ")";
+      }
+      // Pure function of scene time.
+      function paintStrip(t) {
+        for (var i = 0; i < flapCells.length; i++) {
+          var c = flapCells[i], shown = c.initial, active = null;
+          for (var f = 0; f < c.flips.length; f++) {
+            var fl = c.flips[f];
+            if (t < fl.t0) break;
+            if (t < fl.t0 + FLIP) { active = fl; break; }
+            shown = fl.to;
+          }
+          if (!active) {
+            c.top.textContent = shown; c.bot.textContent = shown;
+            clearLeaf(c.leafA, c.glyphA); clearLeaf(c.leafB, c.glyphB);
+            continue;
+          }
+          var p = (t - active.t0) / FLIP, theta = 180 * p * p;
+          var shade = (1 - 0.5 * Math.sin(theta * DEG)).toFixed(3);
+          c.top.textContent = active.to; c.bot.textContent = active.from;
+          if (theta < 90) { showLeaf(c.leafA, c.glyphA, active.from, -theta, shade); clearLeaf(c.leafB, c.glyphB); }
+          else { clearLeaf(c.leafA, c.glyphA); showLeaf(c.leafB, c.glyphB, active.to, 180 - theta, shade); }
+        }
+      }
+
+      /* =========================== CAMERA PUNCH (camera-shake) =========================== */
+      // One hit on the slam frame, shared by the stack and the headline (labels stay put, inside the safe zone).
+      var rig = document.getElementById("everyday-rig");
+      var slamStage = document.getElementById("everyday-slam-stage");
+      function paintRig(t) {
+        var u = t - SLAM;
+        if (u < 0) { rig.style.transform = ""; slamStage.style.transform = ""; return; }
+        var env = Math.exp(-u * 12);
+        var s = 1 + 0.025 * Math.min(1, u / 0.033) * Math.exp(-Math.max(0, u - 0.033) * 9);
+        var x = env * (8 * Math.cos(u * 2 * Math.PI * 13) + 3 * Math.cos(u * 2 * Math.PI * 27 + 1.3));
+        var y = env * (6 * Math.sin(u * 2 * Math.PI * 11 + 0.4));
+        var r = env * 0.4 * Math.sin(u * 2 * Math.PI * 9 + 0.8);
+        var tf = "translate(" + x.toFixed(2) + "px," + y.toFixed(2) + "px) rotate(" + r.toFixed(3) + "deg) scale(" + s.toFixed(4) + ")";
+        rig.style.transform = tf; slamStage.style.transform = tf;
+      }
+
+      // One clock proxy drives every procedural layer from timeline time.
+      var clockT = 0, clock = {};
+      Object.defineProperty(clock, "t", {
+        configurable: true,
+        get: function () { return clockT; },
+        set: function (v) { clockT = v; paintStrip(v); paintRig(v); }
+      });
+      tl.fromTo(clock, { t: 0 }, { t: 2, duration: 2, ease: "none" }, 0);
+      paintStrip(0); paintRig(0);
+
+      /* =========================== "EXAMPLE WEEK" chip =========================== */
+      // Fully opaque from frame 0; only the scale pops.
+      tl.fromTo("#everyday-chip", { scale: 0.8, rotation: -1.5 }, { scale: 1, rotation: -1.5, duration: 0.15, ease: "back.out(1.6)" }, 0);
+
+      /* =========================== SLAM (headline-slam) =========================== */
+      // Opaque on its first frame (the clip starts at 1.0): frame 1.0 is the impact at 1.6x.
+      gsap.set("#everyday-headline", { scale: 1.6, y: 0, opacity: 1 });
+      tl.fromTo("#everyday-headline", { scale: 1.6 }, { scale: 1, duration: 0.28, ease: "expo.out", immediateRender: false }, SLAM);
+      // The stack settles back a touch under the hit; the headline sits on its paper header band.
+      tl.fromTo("#everyday-stage", { y: 0, scale: 1 }, { y: 60, scale: 0.86, duration: 0.32, ease: "power3.out", immediateRender: false }, SLAM);
+      tl.set(".everyday-scrim", { opacity: 1 }, SLAM);   // the band goes to paper on the impact frame itself
+
+      // Exit: labels lift first (2 frames ahead) so the headline whips up a clear path; the cut lands on motion.
+      tl.to("#everyday-labels", { y: -420, duration: 0.36, ease: "power3.in" }, 1.533);
+      tl.to("#everyday-headline", { y: -1100, duration: 0.40, ease: "power4.in" }, 1.60);
+      tl.fromTo("#everyday-cam", { y: 0 }, { y: -70, duration: 0.42, ease: "power3.in", immediateRender: false }, 1.58);
+
+      tl.seek(0);
+      window.__timelines = window.__timelines || {};
+      window.__timelines["everyday"] = tl;
+    })();
+  </script>
+</template>

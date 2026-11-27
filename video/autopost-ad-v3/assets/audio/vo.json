@@ -1,0 +1,83 @@
+[
+ {
+  "start": 0.25,
+  "end": 2.1,
+  "dur": 2.07737,
+  "text": "Run a bakery, a salon, a clinic?",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 0.25
+ },
+ {
+  "start": 2.25,
+  "end": 3.5,
+  "dur": 1.585669,
+  "text": "Posting every day is hard...",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 2.43
+ },
+ {
+  "start": 3.6,
+  "end": 4.4,
+  "dur": 1.068186,
+  "text": "so we built this.",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 4.11
+ },
+ {
+  "start": 5.1,
+  "end": 6.6,
+  "dur": 1.819138,
+  "text": "Type an idea, or pick one.",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 5.28
+ },
+ {
+  "start": 7.05,
+  "end": 8.2,
+  "dur": 1.42542,
+  "text": "AI writes the words...",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 7.2
+ },
+ {
+  "start": 9,
+  "end": 10.05,
+  "dur": 1.0139,
+  "text": "and makes the poster.",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.0,
+  "place": 9
+ },
+ {
+  "start": 11.15,
+  "end": 12.45,
+  "dur": 1.658118,
+  "text": "Post now, or schedule it.",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.07,
+  "place": 11.15
+ },
+ {
+  "start": 13.4,
+  "end": 14.3,
+  "dur": 0.943424,
+  "text": "Every single day.",
+  "model": "eleven_multilingual_v2",
+  "speed": 1.0,
+  "place": 13.4
+ },
+ {
+  "start": 15.3,
+  "end": 17.6,
+  "dur": 1.699546,
+  "text": "We'll build yours. AWSAVYA dot in.",
+  "model": "eleven_flash_v2",
+  "speed": 1.0,
+  "place": 15.3
+ }
+]

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: #F5F4F8; }
+      #root { width: 100%; height: 100%; position: relative; }
+      :root { --brand: #FFC83D; --accent: #FFC83D; --accent-2: #FFC83D; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="18" data-width="1080" data-height="1920">
+      <div id="hook" data-composition-id="hook" data-composition-src="compositions/hook.html"
+        data-start="0" data-duration="2" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="who" data-composition-id="who" data-composition-src="compositions/who.html"
+        data-start="2" data-duration="1.5" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="dive" data-composition-id="dive" data-composition-src="compositions/dive.html"
+        data-start="3.5" data-duration="1.5" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="app" data-composition-id="app" data-composition-src="compositions/app.html"
+        data-start="5" data-duration="8" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="everyday" data-composition-id="everyday" data-composition-src="compositions/everyday.html"
+        data-start="13" data-duration="2" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+      <div id="endcard" data-composition-id="endcard" data-composition-src="compositions/endcard.html"
+        data-start="15" data-duration="3" data-track-index="0" data-track-kind="graphics" data-width="1080" data-height="1920"></div>
+<div
+  id="grain-overlay"
+  style="
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 50;
+  "
+>
+  <div class="grain-texture"></div>
+</div>
+
+<style>
+  @keyframes hf-grain-noise {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+    10% {
+      transform: translate(-5%, -5%);
+    }
+    20% {
+      transform: translate(-10%, 5%);
+    }
+    30% {
+      transform: translate(5%, -10%);
+    }
+    40% {
+      transform: translate(-5%, 15%);
+    }
+    50% {
+      transform: translate(-10%, 5%);
+    }
+    60% {
+      transform: translate(15%, 0);
+    }
+    70% {
+      transform: translate(0, 10%);
+    }
+    80% {
+      transform: translate(-15%, 0);
+    }
+    90% {
+      transform: translate(10%, 5%);
+    }
+  }
+
+  #grain-overlay .grain-texture {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+    opacity: 0.06;
+    animation: hf-grain-noise 0.5s steps(1) infinite;
+  }
+</style>
+      <audio id="soundtrack" class="clip" src="assets/audio/soundtrack.wav" data-start="0" data-duration="18" data-track-index="2" data-volume="1"></audio>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>

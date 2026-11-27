@@ -1,0 +1,394 @@
+<template>
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+
+    #root {
+      position: absolute; inset: 0; overflow: hidden;
+      background: #F5F4F8;
+      --paper: #F5F4F8; --ink: #15131C; --graphite: #57536A; --sun: #FFC83D;
+    }
+    #root *, #root *::before, #root *::after { box-sizing: border-box; }
+
+    /* paper field: a soft light pool so the page reads as printed stock, not a flat fill */
+    #hook-paper {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(90% 55% at 30% 28%, #FBFAFD 0%, rgba(251,250,253,0) 70%),
+        radial-gradient(80% 60% at 85% 95%, rgba(21,19,28,0.07) 0%, rgba(21,19,28,0) 70%),
+        #F5F4F8;
+    }
+
+    /* camera push wrapper (whole frame) and exit wrapper (cut-the-curve outgoing half) */
+    #hook-cam, #hook-exit { position: absolute; inset: 0; transform-origin: 65px 760px; }
+
+    /* ---------------- sticker cluster: A SERVICE BY + wordmark ---------------- */
+    #hook-sticker { position: absolute; left: 0; top: 0; width: 1080px; height: 470px; }
+    #hook-sticker-in {
+      position: absolute; left: 65px; top: 296px;
+      display: flex; align-items: center; gap: 14px;
+      transform-origin: 50% 50%;
+    }
+    .hook-chip {
+      display: inline-flex; align-items: center;
+      height: 64px; padding: 0 20px 0 22px; border-radius: 32px;
+      background: var(--ink); color: var(--paper);
+      font: 600 42px/1 "Martian Mono", monospace; letter-spacing: 0;
+      white-space: nowrap;
+    }
+    .hook-logo-sticker {
+      display: inline-flex; align-items: center;
+      padding: 11px 16px; background: #FFFFFF;
+      border: 4px solid var(--ink); border-radius: 12px;
+      box-shadow: 6px 6px 0 var(--ink);
+    }
+    .hook-logo-sticker img { display: block; height: 52px; width: auto; }
+
+    /* ---------------- headline ---------------- */
+    #hook-headline {
+      position: absolute; left: 65px; top: 404px; width: 950px;
+      font: 800 112px/1.02 "Archivo", sans-serif; letter-spacing: -0.025em; color: var(--ink);
+    }
+    .hook-line { position: relative; display: block; white-space: nowrap; height: 114px; }
+    .hook-w { display: inline-block; will-change: transform, opacity, filter; }
+    /* marker-highlight, highlight mode: the preset's hand-drawn path, stretched into the box (preserveAspectRatio none) */
+    #hook-mark {
+      position: absolute; left: 66px; top: -18px; width: 706px; height: 152px;
+      overflow: visible; z-index: 0;
+    }
+    #hook-mark path { stroke: var(--sun); fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    #hook-line3 .hook-w { position: relative; z-index: 1; }
+
+    /* ---------------- phone ---------------- */
+    #hook-phone-layer { position: absolute; inset: 0; }
+    #hook-phone-shake { position: absolute; inset: 0; }
+    #hook-phone-rise { position: absolute; inset: 0; }
+    #hook-phone-host {
+      position: absolute; left: 452px; top: 792px; width: 500px; height: 1083px;
+      perspective: 1600px; perspective-origin: 6% 16%;
+      /* cast shadow on the paper, falling left and down from a key light top-right */
+      filter: drop-shadow(-46px 40px 64px rgba(21,19,28,0.17));
+    }
+    #hook-phone {
+      position: absolute; inset: 0;
+      border-radius: 70px; padding: 14px;
+      background: linear-gradient(150deg, #2A2733 0%, #15131C 40%, #0C0B10 100%);
+      box-shadow:
+        -8px 3px 0 0 #07060A,
+        -9px 3px 0 0 rgba(255,255,255,0.10),
+        -14px 30px 44px rgba(21,19,28,0.18),
+        inset 2px 0 0 rgba(255,255,255,0.22),
+        inset 0 1px 0 rgba(255,255,255,0.18),
+        inset 0 0 0 1px rgba(0,0,0,0.5);
+      transform: rotateY(-14deg) rotateX(6deg);
+      transform-origin: 50% 50%;
+    }
+    #hook-screen {
+      position: relative; width: 100%; height: 100%; overflow: hidden;
+      border-radius: 56px; background: #E8E6EE;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+    }
+    .hook-card {
+      position: absolute; left: 14px; width: 444px; height: 555px; overflow: hidden;
+      border-radius: 18px; background: var(--paper);
+      box-shadow: 0 14px 30px rgba(21,19,28,0.16), 0 2px 6px rgba(21,19,28,0.10);
+      transform-origin: 50% 0%;
+    }
+    #hook-card-new { top: 18px; z-index: 2; }
+
+    /* live poster, laid out at 1080x1350 exactly like make_poster.py, scaled to the card */
+    .hook-poster-art {
+      position: absolute; left: 0; top: 0; width: 1080px; height: 1350px;
+      background: #F5F4F8; transform: scale(0.41111); transform-origin: 0 0;
+      color: #15131C;
+    }
+    .hook-pa-label {
+      position: absolute; left: 64px; top: 52px; height: 44px; padding: 0 16px;
+      display: flex; align-items: center; border-radius: 22px; background: #FFC83D;
+      font: 600 22px/1 "Martian Mono", monospace;
+    }
+    .hook-pa-head {
+      position: absolute; left: 61px; top: 122px; width: 960px;
+      font: 800 86px/1.04 "Archivo", sans-serif; letter-spacing: -0.005em;
+    }
+    .hook-pa-photo { position: absolute; left: 0; top: 350px; width: 1080px; height: 710px; display: block; }
+    .hook-pa-sub {
+      position: absolute; left: 64px; top: 1092px; width: 952px;
+      font: 450 32px/43px "Archivo", sans-serif;
+    }
+    .hook-pa-logo { position: absolute; left: 64px; top: 1252px; height: 40px; width: auto; }
+    .hook-pa-cta {
+      position: absolute; right: 64px; top: 1242px; height: 60px; padding: 0 24px;
+      display: flex; align-items: center; border-radius: 30px; background: #FFC83D;
+      font: 600 22px/1 "Martian Mono", monospace; white-space: nowrap;
+    }
+
+    /* ---------------- split-flap stamp: POSTED · 8:00 AM ---------------- */
+    #hook-stamp { position: absolute; left: 0; top: 0; width: 1080px; height: 1000px; }
+    #hook-stamp-in {
+      position: absolute; left: 378px; top: 830px;
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; background: #FFFFFF;
+      border: 4px solid var(--ink); border-radius: 14px;
+      box-shadow: 6px 6px 0 var(--ink), 0 22px 40px rgba(21,19,28,0.22);
+      transform-origin: 30% 50%;
+    }
+    .hook-fgroup { display: flex; gap: 3px; }
+    .hook-fcell {
+      position: relative; width: 34px; height: 58px; perspective: 260px;
+      border-radius: 7px; background: #0E0D12;
+    }
+    .hook-fface {
+      position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden;
+      background: linear-gradient(180deg, #27242F 0%, #1A1821 100%);
+    }
+    .hook-ftop, .hook-fleafa { top: 0; border-radius: 7px 7px 0 0; }
+    .hook-fbot, .hook-fleafb { top: 50%; border-radius: 0 0 7px 7px; background: linear-gradient(180deg, #17151D 0%, #221F29 100%); }
+    .hook-fleafa { transform-origin: 50% 100%; z-index: 3; backface-visibility: hidden; }
+    .hook-fleafb { transform-origin: 50% 0%; z-index: 3; backface-visibility: hidden; }
+    .hook-fglyph {
+      position: absolute; left: 0; width: 100%; height: 58px; line-height: 58px; text-align: center;
+      font: 600 50px "Martian Mono", monospace; font-variation-settings: "wdth" 78;
+      color: #F5F4F8; white-space: pre;
+    }
+    .hook-fbot .hook-fglyph, .hook-fleafb .hook-fglyph { top: -29px; }
+    .hook-ftop .hook-fglyph, .hook-fleafa .hook-fglyph { top: 0; }
+    .hook-fseam { position: absolute; left: 0; top: 50%; width: 100%; height: 1px; margin-top: 0; background: rgba(5,5,6,0.85); z-index: 4; }
+  </style>
+
+  <div id="root" data-composition-id="hook" data-width="1080" data-height="1920">
+    <div id="hook-paper"></div>
+
+    <div id="hook-cam">
+      <div id="hook-exit">
+
+        <!-- sticker cluster -->
+        <div id="hook-sticker" class="clip" data-start="0" data-duration="1.5" data-track-index="1">
+          <div id="hook-sticker-in">
+            <span class="hook-chip">A SERVICE BY</span>
+            <span class="hook-logo-sticker"><img src="assets/awsavya-logo.png" alt="AWSAVYA" /></span>
+          </div>
+        </div>
+
+        <!-- phone -->
+        <div id="hook-phone-layer" class="clip" data-start="0" data-duration="2" data-track-index="2" data-layout-allow-overflow>
+          <div id="hook-phone-shake">
+            <div id="hook-phone-rise">
+              <div id="hook-phone-host">
+                <div id="hook-phone">
+                  <div id="hook-screen">
+                    <div id="hook-card-new" class="hook-card">
+                      <div class="hook-poster-art" data-layout-ignore>
+                        <div class="hook-pa-label">FOR BAKERIES</div>
+                        <div class="hook-pa-head">Fresh bakes. Posted before you open.</div>
+                        <img class="hook-pa-photo" src="assets/poster-photo.jpg" alt="" />
+                        <div class="hook-pa-sub">We build you an app that makes and posts a fresh Instagram ad every morning.</div>
+                        <img class="hook-pa-logo" src="assets/awsavya-logo.png" alt="AWSAVYA" />
+                        <div class="hook-pa-cta">TALK TO US · AWSAVYA.IN</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- split-flap stamp, stuck onto the poster's top-left corner -->
+              <div id="hook-stamp" class="clip" data-start="0.6" data-duration="1.4" data-track-index="3">
+                <div id="hook-stamp-in" aria-label="POSTED · 8:00 AM" data-layout-allow-overlap data-layout-allow-occlusion data-layout-allow-overflow>
+                  <div class="hook-fgroup"></div>
+                  <div class="hook-fgroup"></div>
+                  <div class="hook-fgroup"></div>
+                  <div class="hook-fgroup"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- headline (above the phone in paint order) -->
+        <div id="hook-headline" class="clip" data-start="0" data-duration="2" data-track-index="4" aria-label="Your daily Instagram ad, made &amp; posted.">
+          <span class="hook-line"><span class="hook-w">Your</span> <span class="hook-w">daily</span></span>
+          <span class="hook-line"><span class="hook-w">Instagram</span> <span class="hook-w">ad,</span></span>
+          <span id="hook-line3" class="hook-line"><svg id="hook-mark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true" data-layout-ignore><path id="hook-mark-path" d="M 3 24 C 22 20.5, 47 25.5, 68 22.5 C 79 21, 90 23, 97 21.5" stroke-width="26" /></svg><span class="hook-w">made</span> <span class="hook-w">&amp;</span> <span class="hook-w">posted.</span></span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      window.__timelines = window.__timelines || {};
+      var tl = gsap.timeline({ paused: true });
+
+      /* ---------- headline: per-word rise (first word ~40% risen on f0, 1-frame stagger, expo.out) ---------- */
+      var LINE_START = [-0.22, -0.08, 0.08];   /* lines ~3-4 frames apart, line 1 set on f0 */
+      gsap.utils.toArray("#hook-headline .hook-line").forEach(function (line, li) {
+        gsap.utils.toArray(line.querySelectorAll(".hook-w")).forEach(function (w, wi) {
+          addWord(w, LINE_START[li] + wi * 0.033);  /* 1 frame within a line */
+        });
+      });
+      function addWord(w, start) {
+        var dur = 0.45;
+        // seek-safe: tween starts at max(0,start) but begins from the state it would have at that time
+        var p0 = start < 0 ? (-start / dur) : 0;
+        var e0 = p0 > 0 ? (1 - Math.pow(2, -10 * p0)) : 0;
+        // position starts mid-rise on f0; opacity and blur lead the position so frame 0 already reads
+        var o0 = Math.min(1, e0 * 2);
+        tl.fromTo(w,
+          { y: 70 * (1 - e0), opacity: o0, filter: "blur(" + (6 * (1 - o0)).toFixed(2) + "px)" },
+          { y: 0, opacity: 1, filter: "blur(0px)", duration: dur * (1 - p0), ease: "expo.out" },
+          Math.max(0, start));
+      }
+
+      /* marker-highlight (highlight mode): yellow block wipes in behind line 3 on the 0.5 beat */
+      var markPath = document.getElementById("hook-mark-path");
+      var markLen = markPath.getTotalLength();
+      markPath.style.strokeDasharray = String(markLen);
+      gsap.set(markPath, { strokeDashoffset: markLen, opacity: 0 });
+      tl.set(markPath, { opacity: 1 }, 0.5);
+      tl.fromTo(markPath, { strokeDashoffset: markLen }, { strokeDashoffset: 0, duration: 0.25, ease: "expo.out" }, 0.5);
+
+      /* ---------- sticker: spring-pop 0.85 -> 1.0 by f6, exit up at 1.25 ---------- */
+      tl.fromTo("#hook-sticker-in", { scale: 0.85, rotation: -4, y: 0, opacity: 1 },
+        { scale: 1, duration: 0.2, ease: "back.out(1.6)" }, 0);
+      tl.fromTo("#hook-sticker-in", { y: 0, opacity: 1 },
+        { y: -240, opacity: 0, duration: 0.2, ease: "power3.in", immediateRender: false }, 1.25);
+
+      /* ---------- phone: already 70% risen on f0, settles with one overshoot by 0.6 ---------- */
+      tl.fromTo("#hook-phone-rise", { y: 120 }, { y: 0, duration: 0.6, ease: "back.out(1.4)" }, 0);
+
+      /* poster falls from 40% down the screen (power3.in), makes contact at 0.42 (drop-pop SFX 0.45),
+         then settles 1.05 > 1.0 in 4 frames */
+      tl.fromTo("#hook-card-new", { y: -200, scale: 0.8 }, { y: 10, scale: 1.05, duration: 0.42, ease: "power3.in" }, 0);
+      tl.to("#hook-card-new", { y: 0, scale: 1, duration: 0.13, ease: "back.out(2)" }, 0.42);
+
+      /* ---------- camera-shake (handheld-normal-mild at 30%), phone layer only: translation + roll ---------- */
+      function csHash(i, seed) {
+        var h = Math.imul(i | 0, 374761393) + Math.imul(seed | 0, 668265263);
+        h = (h ^ (h >>> 13)) >>> 0; h = Math.imul(h, 1274126177) >>> 0;
+        return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+      }
+      function csNoise(x, seed) {
+        var i = Math.floor(x), f = x - i, u = f * f * f * (f * (f * 6 - 15) + 10);
+        return csHash(i, seed) * (1 - u) + csHash(i + 1, seed) * u;
+      }
+      var ROT = [[[7, 0.15], [5, 0.1]], [[4, 0.8], [2, 0.75]], [[1, 1.2], [0.8, 1.5]]];
+      var INTENSITY = 0.3, DIST = 938, RAD = Math.PI / 180;
+      var shakeEl = document.getElementById("hook-phone-shake");
+      function shakeAt(t) {
+        var pitch = 0, yaw = 0;
+        for (var o = 0; o < ROT.length; o++) {
+          var a = ROT[o][0], b = ROT[o][1];
+          pitch += (csNoise(a[1] * t + (o * 3) * 7.13, o * 3) - 0.5) * a[0] * INTENSITY;
+          yaw += (csNoise(b[1] * t + (o * 3 + 1) * 7.13, o * 3 + 1) - 0.5) * b[0] * INTENSITY;
+        }
+        gsap.set(shakeEl, {
+          x: -DIST * Math.tan(yaw * RAD),
+          y: DIST * Math.tan(pitch * RAD),
+          rotation: (yaw - pitch) * 0.25,
+          transformOrigin: "760px 1300px"
+        });
+      }
+      var shakeDriver = {}, shakeT = 0;
+      Object.defineProperty(shakeDriver, "t", { get: function () { return shakeT; }, set: function (v) { shakeT = v; shakeAt(v); } });
+      shakeAt(0);
+      tl.to(shakeDriver, { t: 2, duration: 2, ease: "none" }, 0);
+
+      /* ---------- split-flap stamp (cell + drum code lifted from split-flap-board) ---------- */
+      var DEG = Math.PI / 180;
+      /* per-cell drum sequences: hold "7:59 AM" (blank POSTED cells) 0.60-0.84, then a left-to-right
+         ripple 0.84-1.00; the minute digits spin through one intermediate character, last cell lands on 1.0 */
+      var SPEC = [
+        ["P", " P", 0.840, 0.06], ["O", " O", 0.852, 0.06], ["S", " S", 0.864, 0.06],
+        ["T", " T", 0.876, 0.06], ["E", " E", 0.888, 0.06], ["D", " D", 0.900, 0.06],
+        ["·", " ·", 0.912, 0.06],
+        ["8", "78", 0.870, 0.07], [":", ":", 0, 0], ["0", "580", 0.875, 0.048], ["0", "960", 0.904, 0.048],
+        ["A", "A", 0, 0], ["M", "M", 0, 0]
+      ];
+      var GROUPS = [6, 1, 4, 2];
+      var cells = [];
+      var groupEls = gsap.utils.toArray("#hook-stamp-in .hook-fgroup");
+      var si = 0;
+      groupEls.forEach(function (g, gi) {
+        for (var k = 0; k < GROUPS[gi]; k++, si++) {
+          var cell = document.createElement("div");
+          cell.className = "hook-fcell";
+          cell.setAttribute("data-layout-allow-overlap", "");
+          cell.setAttribute("data-layout-allow-occlusion", "");
+          cell.setAttribute("data-layout-allow-overflow", "");
+          var faces = {};
+          ["hook-ftop", "hook-fbot", "hook-fleafa", "hook-fleafb"].forEach(function (cls) {
+            var f = document.createElement("div");
+            f.className = "hook-fface " + cls;
+            f.setAttribute("data-layout-allow-occlusion", "");
+            f.setAttribute("data-layout-allow-overlap", "");
+            var gl = document.createElement("span");
+            gl.className = "hook-fglyph";
+            gl.setAttribute("data-layout-allow-occlusion", "");
+            gl.setAttribute("data-layout-allow-overflow", "");
+            f.appendChild(gl);
+            cell.appendChild(f);
+            faces[cls] = f;
+          });
+          var seam = document.createElement("div");
+          seam.className = "hook-fseam";
+          cell.appendChild(seam);
+          g.appendChild(cell);
+          var sp = SPEC[si];
+          cells.push({
+            seq: sp[1].split(""), at: sp[2], step: sp[3],
+            top: faces["hook-ftop"].firstChild, bot: faces["hook-fbot"].firstChild,
+            leafA: faces["hook-fleafa"], leafB: faces["hook-fleafb"]
+          });
+        }
+      });
+      function clearLeaf(leaf) { leaf.style.opacity = "0"; leaf.style.transform = ""; leaf.style.filter = ""; leaf.firstChild.textContent = ""; }
+      function showLeaf(leaf, ch, angle, shade) {
+        leaf.firstChild.textContent = ch; leaf.style.opacity = "1";
+        leaf.style.transform = "rotateX(" + angle.toFixed(2) + "deg)"; leaf.style.filter = "brightness(" + shade + ")";
+      }
+      function paintFlaps(t) {
+        for (var i = 0; i < cells.length; i++) {
+          var c = cells[i], n = c.seq.length - 1;
+          var u = n > 0 ? (t - c.at) / c.step : 0;     /* steps elapsed */
+          if (u <= 0 || u >= n) {
+            var ch = (n > 0 && u >= n) ? c.seq[n] : c.seq[0];
+            c.top.textContent = ch; c.bot.textContent = ch;
+            clearLeaf(c.leafA); clearLeaf(c.leafB);
+            continue;
+          }
+          var k = Math.floor(u), p = u - k;
+          var from = c.seq[k], to = c.seq[k + 1];
+          c.top.textContent = to; c.bot.textContent = from;
+          var theta = 180 * p * p;
+          var shade = (1 - 0.5 * Math.sin(theta * DEG)).toFixed(3);
+          if (theta < 90) { showLeaf(c.leafA, from, -theta, shade); clearLeaf(c.leafB); }
+          else { clearLeaf(c.leafA); showLeaf(c.leafB, to, 180 - theta, shade); }
+        }
+      }
+      var flapDriver = {}, flapT = 0;
+      Object.defineProperty(flapDriver, "t", { get: function () { return flapT; }, set: function (v) { flapT = v; paintFlaps(v); } });
+      paintFlaps(0);
+      tl.to(flapDriver, { t: 2, duration: 2, ease: "none" }, 0);
+
+      /* stamp slap: fully opaque on its first frame (0.60), 1.2 > 1.0 back.out, settled by 0.75,
+         well before the flap ripple starts at 0.84 */
+      tl.fromTo("#hook-stamp-in", { scale: 1.2, rotation: -9 },
+        { scale: 1, rotation: -3, duration: 0.15, ease: "back.out(1.6)" }, 0.6);
+
+      /* ---------- whole-frame camera push 1.00 > 1.04 ---------- */
+      tl.fromTo("#hook-cam", { scale: 1 }, { scale: 1.04, duration: 2, ease: "sine.inOut" }, 0);
+
+      /* ---------- cut-the-curve, outgoing half, direction up: accelerates into the 2.0 seam ----------
+         travel starts at 1.767 (power3.in) so 4+ rendered frames carry visible motion; the seam blur
+         has its own curve so the last hook frames already carry it (~5 px at 1.933, 8 px at 1.967) */
+      tl.fromTo("#hook-exit", { y: 0 }, { y: -1000, duration: 0.233, ease: "power3.in" }, 1.767);
+      tl.fromTo("#hook-exit", { filter: "blur(0px)" },
+        { filter: "blur(8px)", duration: 0.107, ease: "power2.in", immediateRender: false }, 1.86);
+
+      tl.to({}, { duration: 0.001 }, 1.999);
+      window.__timelines["hook"] = tl;
+    })();
+  </script>
+</template>

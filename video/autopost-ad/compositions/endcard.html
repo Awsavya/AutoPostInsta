@@ -1,0 +1,30 @@
+<template>
+  <style>
+    @font-face { font-family: "Archivo"; src: url("assets/fonts/archivo.woff2") format("woff2"); font-weight: 100 900; }
+    @font-face { font-family: "Martian Mono"; src: url("assets/fonts/martian-mono.woff2") format("woff2"); font-weight: 100 800; }
+    #root { position: absolute; inset: 0; background: #F5F4F8; overflow: hidden; }
+    #end-all { position: absolute; inset: 0; }
+    #end-logo { position: absolute; left: 390px; top: 600px; width: 300px; }
+    #end-head { position: absolute; left: 120px; top: 720px; width: 840px; text-align: center; font: 800 100px/1.02 "Archivo", sans-serif;
+      letter-spacing: -0.025em; color: #15131C; }
+    #end-head span { display: inline-block; margin: 0 0.11em; }
+    #end-cta { position: absolute; left: 540px; top: 1010px; transform: translateX(-50%); white-space: nowrap; }
+    #end-btn { padding: 0 40px; height: 96px; border-radius: 48px; background: #FFC83D; color: #15131C;
+      font: 600 34px/96px "Martian Mono", monospace; box-shadow: 0 16px 40px rgba(21,19,28,.18); }
+  </style>
+  <div id="root" data-composition-id="endcard" data-width="1080" data-height="1920">
+    <div id="end-all" class="clip" data-start="0" data-duration="3.0" data-layout-allow-overlap>
+      <img id="end-logo" src="assets/awsavya-logo.png" alt="AWSAVYA">
+      <div id="end-head"><span id="eh-1">Your</span><span id="eh-2">Instagram,</span><span id="eh-3">on</span><span id="eh-4">autopilot.</span></div>
+      <div id="end-cta"><div id="end-btn">TALK TO US · AWSAVYA.IN</div></div>
+    </div>
+  </div>
+  <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#end-logo", { clipPath: "inset(0% 100% 0% 0%)" }, { clipPath: "inset(0% 0% 0% 0%)", duration: 0.5, ease: "power2.inOut" }, 0.05);
+    [1, 2, 3, 4].forEach((n, i) => tl.fromTo(`#eh-${n}`, { opacity: 0, filter: "blur(6px)" },
+      { opacity: 1, filter: "blur(0px)", duration: 0.14, ease: "power4.out" }, 0.35 + i * 0.08));
+    tl.fromTo("#end-btn", { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.6)" }, 0.85);
+    window.__timelines["endcard"] = tl;
+  </script>
+</template>
