@@ -2,9 +2,14 @@
 // run checks, then upload the JPEG and publish through the worker.
 
 const $ = (id) => document.getElementById(id);
+// Ad layout, 1080 x 1350: label + bold headline on top, the photo in the middle, offer line + logo + CTA button below.
 const SIZE = 1080;
-const BAND = 270;
-const CTA = "START A BRIEF · AWSAVYA.IN";
+const HEIGHT = 1350;
+const PHOTO_TOP = 350;
+const PHOTO_BOTTOM = 1060;
+const CTA = "TALK TO US · AWSAVYA.IN";
+const ACCENT = "#FFC83D"; // one bright signal colour so the ad stands out in the feed
+const ACCENT_TEXT = "#15131C";
 const GROUNDS = {
   paper: { bg: "#F5F4F8", text: "#15131C", muted: "#57536A", rule: "#C9C6D2", logo: "/brand/awsavya-logo.png" },
   ink: { bg: "#15131C", text: "#F5F4F8", muted: "#A19DAD", rule: "#36323F", logo: "/brand/awsavya-logo-light.png" },
@@ -121,52 +126,83 @@ function draw() {
   const g = GROUNDS[ground()];
   const canvas = $("poster");
   const ctx = canvas.getContext("2d");
+  const pad = 64;
   ctx.fillStyle = g.bg;
-  ctx.fillRect(0, 0, SIZE, SIZE + BAND);
+  ctx.fillRect(0, 0, SIZE, HEIGHT);
+  ctx.textBaseline = "top";
 
+  // Photo: cover-crop into the middle band.
+  const photoH = PHOTO_BOTTOM - PHOTO_TOP;
   if (state.scene) {
     const s = state.scene;
-    const scale = Math.max(SIZE / s.width, SIZE / s.height); // cover-crop to a square
+    const scale = Math.max(SIZE / s.width, photoH / s.height);
     const w = s.width * scale, h = s.height * scale;
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, SIZE, SIZE); // keep tall or wide photos out of the copy band
+    ctx.rect(0, PHOTO_TOP, SIZE, photoH);
     ctx.clip();
-    ctx.drawImage(s, (SIZE - w) / 2, (SIZE - h) / 2, w, h);
+    ctx.drawImage(s, (SIZE - w) / 2, PHOTO_TOP + (photoH - h) / 2, w, h);
     ctx.restore();
   } else {
     ctx.fillStyle = g.rule;
-    ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.fillRect(0, PHOTO_TOP, SIZE, photoH);
     ctx.fillStyle = g.muted;
     ctx.font = '500 26px "Martian Mono"';
     ctx.textAlign = "center";
-    ctx.fillText("NO IMAGE YET", SIZE / 2, SIZE / 2);
+    ctx.fillText("NO IMAGE YET", SIZE / 2, PHOTO_TOP + photoH / 2 - 13);
     ctx.textAlign = "left";
   }
 
-  ctx.fillStyle = g.rule;
-  ctx.fillRect(0, SIZE - 1, SIZE, 2);
+  // Label: who the ad is for, in the accent colour.
+  let headTop = 72;
+  const audience = $("audience").value.trim().toUpperCase();
+  if (audience) {
+    ctx.font = '600 22px "Martian Mono"';
+    const label = `FOR ${audience}`;
+    const lw = ctx.measureText(label).width + 32;
+    ctx.fillStyle = ACCENT;
+    ctx.beginPath();
+    ctx.roundRect(pad, 52, lw, 44, 22);
+    ctx.fill();
+    ctx.fillStyle = ACCENT_TEXT;
+    ctx.fillText(label, pad + 16, 63);
+    headTop = 122;
+  }
 
-  const pad = 64;
+  // Headline: big and bold, shrunk until it fits in two lines (three at the smallest size).
   ctx.fillStyle = g.text;
-  ctx.font = '420 31px "Archivo"';
-  ctx.textBaseline = "top";
+  let size = 86, head = [];
+  for (size of [86, 78, 70, 62]) {
+    ctx.font = `800 ${size}px "Archivo"`;
+    head = wrapLines(ctx, $("headline").value, SIZE - pad * 2);
+    if (head.length <= 2) break;
+  }
+  head.slice(0, 3).forEach((line, i) => ctx.fillText(line, pad - 3, headTop + i * size * 1.04));
+  state.headLines = head.length;
+
+  // Offer line under the photo.
+  ctx.fillStyle = g.text;
+  ctx.font = '450 32px "Archivo"';
   const lines = wrapLines(ctx, $("sub").value, SIZE - pad * 2);
-  lines.slice(0, 2).forEach((line, i) => ctx.fillText(line, pad, SIZE + 38 + i * 42));
+  lines.slice(0, 2).forEach((line, i) => ctx.fillText(line, pad, PHOTO_BOTTOM + 36 + i * 43));
   state.subLines = lines.length;
 
+  // Logo on the left, CTA button on the right.
+  const rowY = HEIGHT - 48 - 60;
   const logo = state.logos[ground()];
   if (logo) {
-    const lh = 44, lw = (logo.width / logo.height) * lh;
-    const baseY = SIZE + BAND - 44 - lh;
-    ctx.drawImage(logo, pad, baseY, lw, lh);
-    ctx.fillStyle = g.muted;
-    ctx.font = '500 20px "Martian Mono"';
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "right";
-    ctx.fillText(CTA, SIZE - pad, baseY + lh / 2);
-    ctx.textAlign = "left";
+    const lh = 40, lw = (logo.width / logo.height) * lh;
+    ctx.drawImage(logo, pad, rowY + 10, lw, lh);
   }
+  ctx.font = '600 22px "Martian Mono"';
+  const bw = ctx.measureText(CTA).width + 48;
+  ctx.fillStyle = ACCENT;
+  ctx.beginPath();
+  ctx.roundRect(SIZE - pad - bw, rowY, bw, 60, 30);
+  ctx.fill();
+  ctx.fillStyle = ACCENT_TEXT;
+  ctx.textBaseline = "middle";
+  ctx.fillText(CTA, SIZE - pad - bw + 24, rowY + 31);
   ctx.textBaseline = "alphabetic";
   runChecks();
 }
@@ -180,6 +216,7 @@ function runChecks() {
   const checks = [
     [state.scene ? "ok" : "bad", state.scene ? "Image ready" : "No image yet"],
     [$("headline").value.trim() ? "ok" : "bad", $("headline").value.trim() ? "Headline set" : "Headline is empty"],
+    [state.headLines <= 3 ? "ok" : "bad", state.headLines <= 3 ? "Headline fits" : "Headline is too long: shorten it"],
     [state.subLines <= 2 ? "ok" : "bad", state.subLines <= 2 ? "Copy line fits" : "Copy line is longer than 2 lines: shorten it"],
     [caption.trim() ? (caption.length <= 2200 ? "ok" : "bad") : "bad",
       caption.trim() ? `Caption ${caption.length}/2200 characters` : "Caption is empty"],
@@ -201,6 +238,7 @@ $("write-copy").addEventListener("click", () =>
   busy($("write-copy"), $("copy-status"), "Writing…", async () => {
     setStatus($("copy-status"), "");
     const copy = await apiJson("/api/copy", { method: "POST", body: { idea: $("idea").value, ground: ground() } });
+    $("audience").value = copy.audience || "";
     $("headline").value = copy.headline || "";
     $("sub").value = copy.sub || "";
     $("caption").value = copy.caption || "";
@@ -235,7 +273,7 @@ $("make-image").addEventListener("click", () =>
     setStatus($("image-status"), "");
     const resp = await api("/api/image", {
       method: "POST",
-      body: { scene: $("scene").value, headline: $("headline").value, ground: ground() },
+      body: { scene: $("scene").value, ground: ground() },
     });
     const type = resp.headers.get("content-type") || "";
     if (resp.ok && type.startsWith("image/")) {
@@ -248,7 +286,7 @@ $("make-image").addEventListener("click", () =>
     state.sceneIsAI = true;
     $("ai-label").checked = true;
     draw();
-    setStatus($("image-status"), `Image made (${resp.headers.get("x-ai-account") || "AI"}). Check the headline spelling in the preview.`, "ok");
+    setStatus($("image-status"), `Image made (${resp.headers.get("x-ai-account") || "AI"}).`, "ok");
   }));
 
 $("own-photo").addEventListener("change", async (e) => {
@@ -376,7 +414,7 @@ async function setupApp() {
     loadImage(GROUNDS.ink.logo).then((img) => (state.logos.ink = img)),
   ]).catch(() => {});
   $("when").value = defaultWhen();
-  ["headline", "sub", "caption"].forEach((id) => $(id).addEventListener("input", draw));
+  ["audience", "headline", "sub", "caption"].forEach((id) => $(id).addEventListener("input", draw));
   document.querySelectorAll("input[name=ground]").forEach((r) => r.addEventListener("change", draw));
   draw();
   loadHistory();

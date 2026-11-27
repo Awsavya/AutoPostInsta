@@ -6,11 +6,13 @@ const IMAGE_TTL_SECONDS = 120 * 24 * 3600; // keep images long enough for far-of
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // Instagram's limit
 const BUFFER_API = "https://api.buffer.com";
 
+// The app draws all the words itself (crisp, correctly spelled, in the brand fonts), so the photo has none.
 const IMAGE_STYLE =
-  "Black-and-white palette of white, silver, grey and near-black only, premium editorial advertising photography, " +
-  "close-up at eye level, objects large and sharp in the lower two thirds, shallow depth of field. " +
-  "Any phone or tablet screen shows a simple clean app interface of cards, icons and check marks with no readable words. " +
-  "The headline is the only readable text in the image: no other words, no logos, no brand marks, no people, no hands.";
+  "Professional commercial advertising photograph, like a product shot in a printed ad: natural true-to-life colours, " +
+  "clean and vivid but not neon, no purple tint, polished studio-quality lighting, a sharp hero subject and shallow depth of field. " +
+  "The main subject sits in the middle of the frame with room around it, because the top and bottom of the photo will be cropped. " +
+  "Any phone, tablet or laptop screen shows a simple clean app interface of cards, icons, coloured status dots and check marks with no readable words or numbers. " +
+  "No text, letters, words, numbers, logos or watermarks anywhere in the image. No people, faces or hands.";
 
 const COPY_SYSTEM_PROMPT = `You write Instagram ads for AWSAVYA, a two-person software studio in India run by Vivek and Yash.
 Facts you may use (nothing else):
@@ -24,24 +26,25 @@ Hard rules:
 - No hype words: revolutionary, game-changing, world-class, cutting-edge, best, #1, guaranteed.
 - Plain, specific, calm voice. Short sentences. Talk to the reader ("you", "your team").
 Return JSON only with these keys:
-The one-second rule: someone scrolling must understand the ad from the headline and the image alone, in one second, with no decoding. Clear beats clever.
-- "headline": 2 to 6 words, ends with a full stop, drawn inside the image. It states the positive outcome for the owner plainly (for example "Orders in. Phone quiet.", "Every fee, tracked.", "Less paperwork. More baking."). It must never read like a rule or refusal aimed at customers ("No phone orders." sounds like the shop refuses orders), and it must match the image.
-- "sub": ONE full sentence of 60 to 110 characters, shown under the image. It adds a concrete benefit the headline doesn't say.
+This is a paid-style ad, not a poster: it must sell. Someone scrolling must understand in one second who it is for, what problem it fixes and what they get, from the words on the image and the photo alone. Clear beats clever.
+- "audience": who the ad is for, 1 to 3 words, plural, shown as a small label above the headline (for example "Salons", "Coaching centres", "Bakeries", "Clinics"). Use the business type from the idea.
+- "headline": 3 to 7 words in big bold type at the top of the ad, talking straight to that owner. Either name their daily pain as a sharp question ("Still answering every booking call?", "Chasing fee payments again?") or promise the outcome plainly ("Bookings that fill themselves.", "Every order, in one place."). Plain words a shop owner uses; no numbers. It must never read like a rule or refusal aimed at customers ("No phone orders." sounds like the shop refuses orders).
+- "sub": ONE full sentence of 60 to 110 characters, shown under the photo. Say what AWSAVYA builds for them and what it does in their day, concretely (for example "We build you a booking page, so customers pick their own slot and get a reminder.").
 - "hook": the caption's first line, under 100 characters. A question or a pointed statement about the reader's real problem that makes them stop scrolling. Never start with "Custom software" or the product name.
 - "paragraphs": 2 or 3 short paragraphs (1 to 3 sentences each) that follow the hook: the problem, then how AWSAVYA solves it using only the facts above.
 - "hashtags": exactly 5 hashtags without the # sign, all specific to this post's topic (not generic tech tags that don't fit).
-- "scene": two or three sentences describing a photograph that tells the ad's story on its own, so someone who can't read the caption still gets 80% of the message. It must include:
-  1. WHERE: two or three props that make the business type obvious at a glance (bakery: trays of croissants, a flour-dusted counter, a bread display; clinic: a stethoscope, an appointment book, a treatment chair; coaching centre: a whiteboard, stacked notebooks; hardware shop: shelves of tools and bolts).
-  2. THE PROBLEM, visible: the messy "before" (a desk phone off its hook, a spike of handwritten order slips, sticky notes everywhere, a thick ledger, a crumpled printout).
-  3. THE FIX, visible: one phone or tablet whose screen shows a simple, clean app layout made of rows of cards, icons and check marks with NO readable words or numbers, clearly organised compared with the mess.
-  Frame it as a close-up at eye level with the objects large, filling the lower two thirds of the frame; keep the upper third calm and uncluttered for the headline.
-  No abstract metaphors (no keys, locks, puzzles, mazes, gears, light bulbs, paths). Objects only: no people, faces or hands (the image model draws them badly), no logos. Monochrome palette only: white, silver, chrome, steel, glass, black and grey, and food or goods rendered in black-and-white tones; never coloured objects.
+- "scene": two or three sentences describing the ad's hero photograph, the way an ad agency briefs a product shoot. The words are added separately, so the photo has no text. It must include:
+  1. THE HERO: one phone, tablet or laptop, front and centre and in sharp focus, its screen showing a simple, clean app layout made of cards, icons and check marks (no readable words or numbers) that matches what AWSAVYA builds in this ad.
+  2. WHERE: two or three real props from that business around it, in natural colour, so the business type is obvious at a glance (bakery: golden croissants on a tray, a flour-dusted wooden counter; clinic: a stethoscope, a tidy treatment room; coaching centre: a whiteboard, stacked notebooks; hardware shop: shelves of tools and bolts).
+  3. THE OLD WAY, small: one sign of the problem pushed to the side and slightly out of focus (a pile of handwritten order slips, a thick ledger, a ringing desk phone), so the device clearly reads as the better way.
+  Bright, inviting, premium setting, like a real brand's ad. Subject in the middle of the frame.
+  No abstract metaphors (no keys, locks, puzzles, mazes, gears, light bulbs, paths). Objects only: no people, faces or hands (the image model draws them badly), no logos, no purple.
 - "alt": alt text for the finished image, under 150 characters, describing the scene and quoting the headline.
 - "why": one sentence explaining how the image shows the business, the problem and the fix to someone who sees it for one second. If any of the three is missing, change the scene before answering.`;
 
 const LIGHTING = {
-  paper: "Bright, airy, high-key lighting: mostly white and pale silver grey tones",
-  ink: "Dark, low-key lighting: mostly deep black tones with silver highlights",
+  paper: "Bright, airy daylight with soft shadows and a light, clean background",
+  ink: "Moody low-key lighting with a dark background, the glowing screen and the props lit by a warm key light",
 };
 
 // ---------------- helpers ----------------
@@ -220,14 +223,14 @@ async function writeCopy(request, env) {
   const schema = {
     type: "object",
     properties: {
-      headline: { type: "string" }, sub: { type: "string" }, hook: { type: "string" },
+      audience: { type: "string" }, headline: { type: "string" }, sub: { type: "string" }, hook: { type: "string" },
       paragraphs: { type: "array", items: { type: "string" } },
       hashtags: { type: "array", items: { type: "string" } },
       scene: { type: "string" }, alt: { type: "string" }, why: { type: "string" },
     },
-    required: ["headline", "sub", "hook", "paragraphs", "hashtags", "scene", "alt", "why"],
+    required: ["audience", "headline", "sub", "hook", "paragraphs", "hashtags", "scene", "alt", "why"],
   };
-  const mood = ground === "ink" ? "dark, low-key" : "bright, high-key";
+  const mood = ground === "ink" ? "dark and moody" : "bright and airy";
   const userText = `Ad idea: ${String(idea).slice(0, 800)}\nThe photo will be ${mood}; describe a scene that suits that lighting.\n` +
     `Return only the JSON object with the keys: ${schema.required.join(", ")}.`;
   const { text, provider } = await completeText(env, COPY_SYSTEM_PROMPT, userText, { maxTokens: 3000 });
@@ -247,7 +250,7 @@ async function writeCopy(request, env) {
   const caption = [String(copy.hook || "").trim(), ...paragraphs, "Start a brief at awsavya.in.", tags.map((t) => `#${t}`).join(" ")]
     .filter(Boolean)
     .join("\n\n");
-  return json({ headline: copy.headline, sub: copy.sub, caption, scene: copy.scene, alt: copy.alt, why: copy.why || "", account });
+  return json({ audience: copy.audience || "", headline: copy.headline, sub: copy.sub, caption, scene: copy.scene, alt: copy.alt, why: copy.why || "", account });
 }
 
 const IDEA_PROMPT = `You suggest Instagram ad ideas for AWSAVYA, a two-person software studio in India (Vivek and Yash).
@@ -313,18 +316,10 @@ async function suggestIdea(env) {
 }
 
 async function makeImage(request, env) {
-  const { scene = "", headline = "", ground = "paper" } = await request.json().catch(() => ({}));
-  if (!scene.trim() || !headline.trim()) return fail("Scene and headline are both needed for the image.");
+  const { scene = "", ground = "paper" } = await request.json().catch(() => ({}));
+  if (!scene.trim()) return fail("Describe the scene first (Write it with AI fills it in).");
   const g = ground === "ink" ? "ink" : "paper";
-  const type = g === "ink"
-    ? "a large clean white sans-serif headline"
-    : "a large elegant black serif headline";
-  // One-piece composition: the headline sits in the photo's own empty space, not on a separate banner.
-  const prompt =
-    `${scene.trim().replace(/\.?$/, ".")} A single full-bleed photograph that fills the entire frame edge to edge, ` +
-    `with a calm, uncluttered upper third. In that space, ${type} is set directly onto the photo ` +
-    `as part of the image (no box, no banner, no border, no separate panel), reading "${headline.trim()}". ` +
-    `${LIGHTING[g]}. ${IMAGE_STYLE}`;
+  const prompt = `${scene.trim().replace(/\.?$/, ".")} ${LIGHTING[g]}. ${IMAGE_STYLE}`;
   let cloudflareError;
   try {
     const { resp, account } = await runModel(env, env.IMAGE_MODEL, () => {

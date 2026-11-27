@@ -54,9 +54,11 @@
         <!-- 2. Words -->
         <div class="card">
           <h2><span class="step mono">02</span> Words</h2>
-          <label for="headline" class="label">Headline <span class="muted">(drawn inside the image)</span></label>
-          <input id="headline" maxlength="60" placeholder="Send us the messy version.">
-          <label for="sub" class="label">Copy line <span class="muted">(under the image, max 2 lines)</span></label>
+          <label for="audience" class="label">Who it's for <span class="muted">(yellow label above the headline)</span></label>
+          <input id="audience" maxlength="28" placeholder="Salons">
+          <label for="headline" class="label">Headline <span class="muted">(big text at the top)</span></label>
+          <input id="headline" maxlength="60" placeholder="Still answering every booking call?">
+          <label for="sub" class="label">Offer line <span class="muted">(under the photo, max 2 lines)</span></label>
           <input id="sub" maxlength="140">
           <label for="caption" class="label">Caption <span id="caption-count" class="muted mono small"></span></label>
           <textarea id="caption" rows="8"></textarea>
@@ -73,7 +75,7 @@
           </fieldset>
           <p id="grid-hint" class="muted small"></p>
           <label for="scene" class="label">Scene <span class="muted">(what the AI should picture)</span></label>
-          <textarea id="scene" rows="2" placeholder="A tall stack of paper files pushed to one side of a desk, and a single tablet on the clean side."></textarea>
+          <textarea id="scene" rows="2" placeholder="A tablet showing a clean booking calendar on a salon counter, with combs and a hairdryer around it, and a paper appointment book pushed aside."></textarea>
           <p id="scene-why" class="muted small"></p>
           <div class="row">
             <button id="make-image" class="btn btn-primary">Make image with AI</button>
